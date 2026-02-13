@@ -8,141 +8,205 @@
 <link rel="icon" href="ecotermo.png">
 
 <style>
-  /* Base */
-  *{ box-sizing:border-box; }
+/* Base */
+*{ box-sizing:border-box; }
+body{
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+  text-align:center;
+  padding:40px 20px;
+  margin:0;
+}
+
+.container{
+  background:#1e293b;
+  padding:35px;
+  border-radius:20px;
+  max-width:650px;
+  width:100%;
+  margin:0 auto;
+  box-shadow:0 12px 35px rgba(0,0,0,0.5);
+}
+
+/* LOGO */
+.logoBox{
+  background:white;
+  padding:12px 20px;
+  border-radius:14px;
+  display:inline-block;
+  margin-bottom:20px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.4);
+}
+.logoBox img{
+  width:180px;
+  height:auto;
+  display:block;
+}
+
+/* Textos */
+h1{
+  margin:0 0 14px;
+  font-size:24px;
+}
+p{
+  margin:0 0 10px;
+  opacity:.9;
+}
+
+/* CONTENEDOR MINUTOS / SEGUNDOS */
+.timeContainer{
+  display:flex;
+  width:100%;
+  max-width:520px;
+  margin:20px auto 10px auto;
+  background:#0f172a;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.timeBox{
+  flex:1;
+  padding:18px 12px;
+  text-align:center;
+}
+
+.divider{
+  width:2px;
+  background:rgba(255,255,255,0.20);
+}
+
+.timeLabel{
+  font-weight:bold;
+  margin-bottom:10px;
+}
+
+/* Inputs (ancho fijo lindo en PC, se adapta en móvil) */
+.timeBox input{
+  width:min(160px, 90%);
+  padding:10px 12px;
+  font-size:18px;
+  border-radius:12px;
+  border:none;
+  text-align:center;
+  display:block;
+  margin:0 auto;
+}
+
+/* Total */
+.totalSeg{
+  margin-top:12px;
+  font-size:16px;
+  opacity:.9;
+}
+
+/* Resultados */
+.result{
+  margin-top:22px;
+  font-size:26px;
+  font-weight:bold;
+  word-break:break-word;
+}
+
+/* Factor */
+.factor{
+  margin-top:20px;
+  font-size:24px;
+  font-weight:bold;
+  padding:12px 14px;
+  border-radius:14px;
+  display:inline-block;
+  max-width:100%;
+}
+
+.factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
+.factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
+.factor.neu{ color:#e5e7eb; }
+
+.tablaUsada{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.85;
+}
+
+/* ✅ Responsive para CELULAR (arregla tu problema) */
+@media (max-width: 520px){
+
   body{
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg,#0f172a,#1e293b);
-    color:white;
-    text-align:center;
-    padding:40px 20px;
-    margin:0;
+    padding:18px 10px;
   }
 
   .container{
-    background:#1e293b;
-    padding:35px;
-    border-radius:20px;
-    max-width:650px;
-    width:100%;
-    margin:0 auto;
-    box-shadow:0 12px 35px rgba(0,0,0,0.5);
+    padding:16px;
+    border-radius:18px;
   }
 
-  /* LOGO */
   .logoBox{
-    background:white;
-    padding:12px 20px;
-    border-radius:14px;
-    display:inline-block;
-    margin-bottom:20px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.4);
+    padding:8px 12px;
+    margin-bottom:12px;
   }
+
   .logoBox img{
-    width:180px;
-    height:auto;
-    display:block;
+    width:120px;
   }
 
-  h1{ margin:0 0 14px; font-size:24px; }
-  p{ margin:0 0 10px; opacity:.9; }
-
-  /* CONTENEDOR MINUTOS / SEGUNDOS */
-  .timeContainer{
-    display:flex;
-    width:100%;
-    max-width:520px;
-    margin:20px auto 10px auto;
-    background:#0f172a;
-    border-radius:14px;
-    overflow:hidden;
-  }
-  .timeBox{
-    flex:1;
-    padding:18px 12px;
-    text-align:center;
-  }
-  .divider{
-    width:2px;
-    background:rgba(255,255,255,0.20);
-  }
-  .timeLabel{
-    font-weight:bold;
+  h1{
+    font-size:20px;
+    line-height:1.2;
     margin-bottom:10px;
   }
 
-  /* INPUT: más chico y centrado (responsive) */
+  p{
+    font-size:15px;
+  }
+
+  .timeContainer{
+    max-width:100%;
+    margin-top:16px;
+  }
+
+  .timeBox{
+    padding:12px 8px;
+  }
+
+  .timeLabel{
+    font-size:14px;
+  }
+
   .timeBox input{
-    width:min(160px, 90%);   /* en celu se achica solo */
-    padding:10px 12px;
-    font-size:18px;
-    border-radius:12px;
-    border:none;
-    text-align:center;
-    display:block;
-    margin:0 auto;
+    width:100%;
+    max-width:120px;   /* 🔥 evita que sea gigante */
+    font-size:16px;
+    padding:8px;
+    border-radius:10px;
   }
 
   .totalSeg{
-    margin-top:12px;
-    font-size:16px;
-    opacity:.9;
+    font-size:14px;
+    margin-top:10px;
   }
 
   .result{
-    margin-top:22px;
-    font-size:26px;
-    font-weight:bold;
-    word-break:break-word;
+    font-size:20px;
+    margin-top:14px;
   }
 
   .factor{
-    margin-top:20px;
-    font-size:24px;
-    font-weight:bold;
-    padding:12px 14px;
-    border-radius:14px;
-    display:inline-block;
-    max-width:100%;
+    font-size:18px;
+    padding:8px 12px;
+    margin-top:16px;
   }
-  .factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
-  .factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
-  .factor.neu{ color:#e5e7eb; }
 
   .tablaUsada{
-    margin-top:10px;
-    font-size:14px;
-    opacity:.85;
+    font-size:13px;
   }
+}
 
-  /* ✅ Responsive: celulares */
-  @media (max-width: 520px){
-    body{ padding:22px 12px; }
-    .container{ padding:18px; border-radius:16px; }
-
-    .logoBox{ padding:10px 14px; margin-bottom:14px; }
-    .logoBox img{ width:140px; }
-
-    h1{ font-size:20px; margin-bottom:10px; }
-    .timeContainer{ max-width:100%; margin-top:14px; }
-
-    .timeBox{ padding:14px 10px; }
-    .timeBox input{ font-size:16px; padding:10px; }
-
-    .result{ font-size:22px; margin-top:16px; }
-    .factor{ font-size:20px; padding:10px 12px; }
-  }
-
-  /* ✅ Extra: pantallas MUY chicas (apila en columna) */
-  @media (max-width: 360px){
-    .timeContainer{
-      flex-direction:column;
-    }
-    .divider{
-      width:100%;
-      height:2px;
-    }
-  }
+/* Extra: si la pantalla es MUY chica, apila */
+@media (max-width: 360px){
+  .timeContainer{ flex-direction:column; }
+  .divider{ width:100%; height:2px; }
+}
 </style>
 </head>
 
@@ -181,96 +245,96 @@
 </div>
 
 <script>
-  // Tabla del certificado (error %)
-  const tabla = [
-    { caudal: 250,  error:  0.39 },
-    { caudal: 500,  error:  0.47 },
-    { caudal: 1250, error:  0.39 },
-    { caudal: 2500, error: -0.47 }
-  ];
+// Tabla del certificado (error %)
+const tabla = [
+  { caudal: 250,  error:  0.39 },
+  { caudal: 500,  error:  0.47 },
+  { caudal: 1250, error:  0.39 },
+  { caudal: 2500, error: -0.47 }
+];
 
-  const minEl = document.getElementById("minutos");
-  const segEl = document.getElementById("segundos");
+const minEl = document.getElementById("minutos");
+const segEl = document.getElementById("segundos");
 
-  // Convierte negativos a 0 y redondea a entero
-  function clamp(n){
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return Math.floor(n);
+function clamp(n){
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
+function calcular(){
+  let min = clamp(Number(minEl.value));
+  let seg = clamp(Number(segEl.value));
+
+  // Si segundos >= 60, convertir a minutos automáticamente
+  if(seg >= 60){
+    min += Math.floor(seg / 60);
+    seg = seg % 60;
   }
 
-  function calcular(){
-    let min = clamp(Number(minEl.value));
-    let seg = clamp(Number(segEl.value));
+  // Mostrar normalizado
+  minEl.value = (minEl.value === "" && min === 0) ? "" : min;
+  segEl.value = (segEl.value === "" && seg === 0) ? "" : seg;
 
-    // Si segundos >= 60, los convierte automáticamente a minutos
-    if(seg >= 60){
-      min += Math.floor(seg / 60);
-      seg = seg % 60;
-    }
+  const total = (min * 60) + seg;
 
-    // Mostrar los valores normalizados
-    minEl.value = (minEl.value === "" && min === 0) ? "" : min;
-    segEl.value = (segEl.value === "" && seg === 0) ? "" : seg;
+  document.getElementById("totalSegundos").textContent =
+    "Total: " + total.toLocaleString("es-AR") + " segundos";
 
-    const total = (min * 60) + seg;
-
-    document.getElementById("totalSegundos").textContent =
-      "Total: " + total.toLocaleString("es-AR") + " segundos";
-
-    if(total <= 0){
-      document.getElementById("consumo_dm3").textContent = "— dm³/h";
-      document.getElementById("consumo_m3").textContent  = "— m³/h";
-      const f = document.getElementById("factor");
-      f.textContent = "Factor de corrección: —";
-      f.className = "factor neu";
-      document.getElementById("tablaUsada").textContent = "";
-      return;
-    }
-
-    // Consumo por hora
-    const dm3_h = (3600 * 100) / total;
-    const m3_h  = dm3_h / 1000;
-
-    document.getElementById("consumo_dm3").textContent =
-      dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
-
-    document.getElementById("consumo_m3").textContent =
-      m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
-
-    // Buscar punto de tabla más cercano
-    let masCercano = tabla[0];
-    let difMin = Math.abs(dm3_h - masCercano.caudal);
-
-    for(let i=1; i<tabla.length; i++){
-      const dif = Math.abs(dm3_h - tabla[i].caudal);
-      if(dif < difMin){
-        difMin = dif;
-        masCercano = tabla[i];
-      }
-    }
-
-    const err = masCercano.error;
-    const factorEl = document.getElementById("factor");
-
-    factorEl.className = (err < 0) ? "factor neg" : "factor pos";
-    factorEl.textContent =
-      "Factor de corrección: " +
-      err.toLocaleString("es-AR",{minimumFractionDigits:2, maximumFractionDigits:2}) +
-      " %";
-
-    document.getElementById("tablaUsada").textContent =
-      "Tabla usada: " + masCercano.caudal + " dm³/h";
+  if(total <= 0){
+    document.getElementById("consumo_dm3").textContent = "— dm³/h";
+    document.getElementById("consumo_m3").textContent  = "— m³/h";
+    const f = document.getElementById("factor");
+    f.textContent = "Factor de corrección: —";
+    f.className = "factor neu";
+    document.getElementById("tablaUsada").textContent = "";
+    return;
   }
 
-  minEl.addEventListener("input", calcular);
-  segEl.addEventListener("input", calcular);
-  calcular();
+  // Consumo por hora
+  const dm3_h = (3600 * 100) / total;
+  const m3_h  = dm3_h / 1000;
+
+  document.getElementById("consumo_dm3").textContent =
+    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
+
+  document.getElementById("consumo_m3").textContent =
+    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
+
+  // Buscar el punto de tabla más cercano
+  let masCercano = tabla[0];
+  let difMin = Math.abs(dm3_h - masCercano.caudal);
+
+  for(let i=1; i<tabla.length; i++){
+    const dif = Math.abs(dm3_h - tabla[i].caudal);
+    if(dif < difMin){
+      difMin = dif;
+      masCercano = tabla[i];
+    }
+  }
+
+  // Mostrar factor
+  const err = masCercano.error;
+  const factorEl = document.getElementById("factor");
+
+  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
+  factorEl.textContent =
+    "Factor de corrección: " +
+    err.toLocaleString("es-AR",{minimumFractionDigits:2, maximumFractionDigits:2}) +
+    " %";
+
+  document.getElementById("tablaUsada").textContent =
+    "Tabla usada: " + masCercano.caudal + " dm³/h";
+}
+
+minEl.addEventListener("input", calcular);
+segEl.addEventListener("input", calcular);
+calcular();
 </script>
 
 </body>
 </html>
 
-
 </body>
 </html>
+
 
