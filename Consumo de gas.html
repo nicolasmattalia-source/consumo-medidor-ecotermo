@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consumo de medidor húmedo</title>
+
+<link rel="icon" href="ecotermo.png">
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+  text-align:center;
+  padding:40px 20px;
+}
+
+.container{
+  background:#1e293b;
+  padding:35px;
+  border-radius:20px;
+  max-width:650px;
+  margin:auto;
+  box-shadow:0 12px 35px rgba(0,0,0,0.5);
+}
+
+/* LOGO */
+.logoBox{
+  background:white;
+  padding:12px 20px;
+  border-radius:14px;
+  display:inline-block;
+  margin-bottom:20px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.4);
+}
+.logoBox img{
+  width:180px;
+}
+
+/* TITULO */
+h1{
+  margin-bottom:18px;
+  font-size:24px;
+}
+
+/* CONTENEDOR MINUTOS / SEGUNDOS */
+.timeContainer{
+  display:flex;
+  max-width:520px;
+  margin:20px auto 10px auto;
+  background:#0f172a;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+/* CADA MITAD */
+.timeBox{
+  flex:1;
+  padding:18px 12px;
+  text-align:center;
+}
+
+/* LINEA DIVISORIA CENTRAL */
+.divider{
+  width:2px;
+  background:rgba(255,255,255,0.20);
+}
+
+/* LABEL */
+.timeLabel{
+  font-weight:bold;
+  margin-bottom:10px;
+}
+
+/* INPUT: ahora más chico y centrado */
+.timeBox input{
+  width:160px;              /* 🔥 ancho fijo (más chico) */
+  max-width:85%;            /* por si la pantalla es chica */
+  padding:10px 12px;        /* 🔥 un poquito más bajo */
+  font-size:18px;
+  border-radius:12px;
+  border:none;
+  text-align:center;
+  display:block;            /* permite centrar con margin auto */
+  margin:0 auto;            /* 🔥 centrado */
+}
+
+/* TOTAL SEGUNDOS */
+.totalSeg{
+  margin-top:12px;
+  font-size:16px;
+  opacity:.9;
+}
+
+/* RESULTADOS */
+.result{
+  margin-top:22px;
+  font-size:26px;
+  font-weight:bold;
+}
+
+/* FACTOR */
+.factor{
+  margin-top:20px;
+  font-size:24px;
+  font-weight:bold;
+  padding:12px 14px;
+  border-radius:14px;
+  display:inline-block;
+}
+
+.factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
+.factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
+.factor.neu{ color:#e5e7eb; }
+
+.tablaUsada{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.85;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="logoBox">
+    <img src="ecotermo.png" alt="Ecotermo">
+  </div>
+
+  <h1>Consumo de medidor húmedo</h1>
+  <p>Tiempo que tarda en consumir <b>100 dm³</b></p>
+
+  <div class="timeContainer">
+
+    <div class="timeBox">
+      <div class="timeLabel">Minutos</div>
+      <input type="number" id="minutos" min="0">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="timeBox">
+      <div class="timeLabel">Segundos</div>
+      <input type="number" id="segundos" min="0">
+    </div>
+
+  </div>
+
+  <div class="totalSeg" id="totalSegundos">Total: — segundos</div>
+
+  <div class="result" id="consumo_dm3">— dm³/h</div>
+  <div class="result" id="consumo_m3">— m³/h</div>
+
+  <div class="factor neu" id="factor">Factor de corrección: —</div>
+  <div class="tablaUsada" id="tablaUsada"></div>
+
+</div>
+
+<script>
+// Tabla del certificado (error %)
+const tabla = [
+  { caudal: 250,  error:  0.39 },
+  { caudal: 500,  error:  0.47 },
+  { caudal: 1250, error:  0.39 },
+  { caudal: 2500, error: -0.47 }
+];
+
+const minEl = document.getElementById("minutos");
+const segEl = document.getElementById("segundos");
+
+// Convierte negativos a 0 y redondea a entero
+function clamp(n){
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
+function calcular(){
+  let min = clamp(Number(minEl.value));
+  let seg = clamp(Number(segEl.value));
+
+  // Si segundos >= 60, los convierte automáticamente a minutos
+  if(seg >= 60){
+    min += Math.floor(seg / 60);
+    seg = seg % 60;
+  }
+
+  // Mostrar los valores ya normalizados
+  minEl.value = min;
+  segEl.value = seg;
+
+  const total = (min * 60) + seg;
+
+  // Mostrar total de segundos
+  document.getElementById("totalSegundos").textContent =
+    "Total: " + total.toLocaleString("es-AR") + " segundos";
+
+  // Si total = 0, no calculamos
+  if(total <= 0){
+    document.getElementById("consumo_dm3").textContent = "— dm³/h";
+    document.getElementById("consumo_m3").textContent  = "— m³/h";
+    const f = document.getElementById("factor");
+    f.textContent = "Factor de corrección: —";
+    f.className = "factor neu";
+    document.getElementById("tablaUsada").textContent = "";
+    return;
+  }
+
+  // Consumo por hora
+  const dm3_h = (3600 * 100) / total;
+  const m3_h  = dm3_h / 1000;
+
+  document.getElementById("consumo_dm3").textContent =
+    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
+
+  document.getElementById("consumo_m3").textContent =
+    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
+
+  // Buscar punto de tabla más cercano
+  let masCercano = tabla[0];
+  let difMin = Math.abs(dm3_h - masCercano.caudal);
+
+  for(let i=1; i<tabla.length; i++){
+    const dif = Math.abs(dm3_h - tabla[i].caudal);
+    if(dif < difMin){
+      difMin = dif;
+      masCercano = tabla[i];
+    }
+  }
+
+  // Mostrar factor
+  const err = masCercano.error;
+  const factorEl = document.getElementById("factor");
+
+  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
+  factorEl.textContent =
+    "Factor de corrección: " +
+    err.toLocaleString("es-AR",{minimumFractionDigits:2, maximumFractionDigits:2}) +
+    " %";
+
+  document.getElementById("tablaUsada").textContent =
+    "Tabla usada: " + masCercano.caudal + " dm³/h";
+}
+
+minEl.addEventListener("input", calcular);
+segEl.addEventListener("input", calcular);
+calcular();
+</script>
+
+</body>
+</html>
