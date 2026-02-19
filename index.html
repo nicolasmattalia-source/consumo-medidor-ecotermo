@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Consumo de medidor</title>
+<link rel="icon" href="ecotermo.png">
 
 <style>
 *{ box-sizing:border-box; }
@@ -15,6 +16,7 @@ body{
   text-align:center;
   padding:40px 20px;
   margin:0;
+  position:relative;
 }
 
 .menuBtn{
@@ -34,13 +36,72 @@ body{
   border-radius:20px;
   max-width:750px;
   margin:0 auto;
+  box-shadow:0 12px 35px rgba(0,0,0,0.5);
 }
+
+.logoBox{
+  background:white;
+  padding:12px 20px;
+  border-radius:14px;
+  display:inline-block;
+  margin-bottom:20px;
+}
+
+.logoBox img{ width:180px; }
 
 select, input, button{
   padding:8px;
   border-radius:8px;
   margin:6px;
 }
+
+button{ cursor:pointer; }
+
+.timeContainer{
+  display:flex;
+  max-width:520px;
+  margin:20px auto;
+  background:#0f172a;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.timeBox{ flex:1; padding:18px 12px; }
+.divider{ width:2px; background:rgba(255,255,255,0.20); }
+
+.totalSeg{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.85;
+}
+
+.result{
+  margin-top:15px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+.factor{
+  margin-top:15px;
+  font-size:22px;
+  font-weight:bold;
+  padding:10px;
+  border-radius:12px;
+  display:inline-block;
+}
+
+.factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
+.factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
+
+.overlay{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  z-index:900;
+}
+.overlay.activo{ display:block; }
 
 .panelAdmin{
   position:fixed;
@@ -49,25 +110,66 @@ select, input, button{
   width:380px;
   height:100%;
   background:#111827;
-  transition:left .3s ease;
+  box-shadow:5px 0 20px rgba(0,0,0,0.5);
+  transition:left 0.3s ease;
+  z-index:1000;
   padding:20px;
   overflow-y:auto;
 }
-
 .panelAdmin.activo{ left:0; }
 
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.5);
+.medItem{
+  background:#1f2937;
+  padding:12px;
+  margin:10px 0;
+  border-radius:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  text-align:left;
+  font-size:13px;
+}
+
+.iconoAccion{
+  cursor:pointer;
+  font-size:20px;
+}
+
+.menuAcciones{
+  margin-top:6px;
   display:none;
 }
 
-.overlay.activo{ display:block; }
+.menuAcciones button{
+  background:none;
+  border:none;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  margin-right:8px;
+}
 
-.factor.pos{ color:#22c55e; }
-.factor.neg{ color:#ef4444; }
+/* Responsive */
+@media (max-width:600px){
 
+  body{ padding:20px 12px; }
+
+  .container{ padding:20px 15px; }
+
+  h1{ font-size:26px; }
+
+  select{ width:100%; max-width:260px; }
+
+  .timeContainer{ flex-direction:column; padding:15px; }
+
+  .divider{ width:100%; height:2px; margin:12px 0; }
+
+  .timeBox input{ width:100%; }
+
+  .panelAdmin{ width:100%; left:-100%; }
+
+  .panelAdmin.activo{ left:0; }
+}
 </style>
 </head>
 
@@ -77,18 +179,34 @@ select, input, button{
 
 <div class="container">
 
-<h1>Consumo de medidor</h1>
+  <div class="logoBox">
+    <img src="ecotermo.png">
+  </div>
 
-<select id="medidor"></select>
+  <h1>Consumo de medidor</h1>
 
-<p>Tiempo que tarda en consumir <b>100 dm³</b></p>
+  <select id="medidor"></select>
 
-<input type="number" id="minutos" placeholder="Minutos">
-<input type="number" id="segundos" placeholder="Segundos">
+  <p>Tiempo que tarda en consumir <b>100 dm³</b></p>
 
-<div id="consumo_dm3"></div>
-<div id="consumo_m3"></div>
-<div id="factor"></div>
+  <div class="timeContainer">
+    <div class="timeBox">
+      Minutos<br>
+      <input type="number" id="minutos" min="0">
+    </div>
+    <div class="divider"></div>
+    <div class="timeBox">
+      Segundos<br>
+      <input type="number" id="segundos" min="0">
+    </div>
+  </div>
+
+  <div class="totalSeg" id="totalSegundos">Total: — segundos</div>
+
+  <div class="result" id="consumo_dm3">— dm³/h</div>
+  <div class="result" id="consumo_m3">— m³/h</div>
+  <div class="factor" id="factor">Factor de corrección: —</div>
+  <div id="tablaUsada"></div>
 
 </div>
 
@@ -96,134 +214,230 @@ select, input, button{
 
 <div id="panelAdmin" class="panelAdmin">
 
-<h3>Administrar medidores</h3>
+  <h3>Administrar medidores</h3>
 
-<button onclick="exportarBackup()">Exportar Backup</button>
-<button onclick="importarBackup()">Importar Backup</button>
-<input type="file" id="archivoBackup" accept=".json" style="display:none">
+  <div id="listaMedidores"></div>
 
-<hr>
+  <hr>
 
-<input type="text" id="nuevoNombre" placeholder="Nombre">
-<select id="nuevaUnidad">
-<option value="dm3">dm3/h</option>
-<option value="m3">m3/h</option>
-</select>
-<input type="file" id="archivoTabla" accept=".csv">
-<button onclick="guardarMedidor()">Guardar</button>
+  <button onclick="mostrarFormularioNuevo()">➕ Agregar medidor</button>
+
+  <hr>
+
+  <button onclick="exportarBackup()">📤 Exportar Backup</button>
+  <button onclick="importarBackup()">📥 Importar Backup</button>
+  <input type="file" id="archivoBackup" accept=".json" style="display:none">
+
+  <div id="formularioMedidor" style="display:none; margin-top:20px;">
+
+    <div id="infoArchivoActual" style="font-size:13px; margin-bottom:10px; opacity:0.8;"></div>
+
+    <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
+    <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
+
+    <select id="nuevaUnidad">
+      <option value="dm3">Trabaja en dm³/h</option>
+      <option value="m3">Trabaja en m³/h</option>
+    </select>
+
+    <input type="file" id="archivoTabla" accept=".csv">
+
+    <button onclick="guardarMedidor()">Guardar</button>
+    <button onclick="cerrarFormulario()">Cancelar</button>
+  </div>
+
+  <br>
+  <button onclick="cerrarPanel()">Cerrar</button>
 
 </div>
 
 <script>
 
-let medidores = JSON.parse(localStorage.getItem("medidoresData") || "{}");
+// === CONFIGURACIÓN ===
+
+const PASSWORD_ADMIN = "final";
+let adminAutorizado = false;
+let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
+let editandoClave = null;
 
 const medidorEl = document.getElementById("medidor");
+const minEl = document.getElementById("minutos");
+const segEl = document.getElementById("segundos");
+
+// === PANEL ===
 
 function abrirPanel(){
   document.getElementById("panelAdmin").classList.add("activo");
   document.getElementById("overlay").classList.add("activo");
+  actualizarLista();
 }
 
 function cerrarPanel(){
   document.getElementById("panelAdmin").classList.remove("activo");
   document.getElementById("overlay").classList.remove("activo");
+  adminAutorizado = false;
 }
+
+// === SELECTOR ===
 
 function actualizarSelector(){
-  medidorEl.innerHTML="";
-  const keys = Object.keys(medidores);
-
-  if(keys.length===0){
-    const opt=document.createElement("option");
-    opt.textContent="No hay medidores cargados";
+  medidorEl.innerHTML = "";
+  for(let key in medidores){
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = medidores[key].nombre;
     medidorEl.appendChild(opt);
-    return;
+  }
+}
+actualizarSelector();
+
+// === CÁLCULO ===
+
+function calcular(){
+
+  const medidor = medidores[medidorEl.value];
+  if(!medidor) return;
+
+  let min = Number(minEl.value) || 0;
+  let seg = Number(segEl.value) || 0;
+
+  if(seg >= 60){
+    min += Math.floor(seg / 60);
+    seg = seg % 60;
   }
 
-  keys.forEach(k=>{
-    const opt=document.createElement("option");
-    opt.value=k;
-    opt.textContent=medidores[k].nombre;
-    medidorEl.appendChild(opt);
-  });
-}
+  const total = (min * 60) + seg;
 
-function parseNumero(v){
-  if(!v) return 0;
-  return parseFloat(v.replace(",","."));
-}
+  document.getElementById("totalSegundos").textContent =
+    "Total: " + total.toLocaleString("es-AR") + " segundos";
 
-function guardarMedidor(){
+  if(total <= 0) return;
 
-  const nombre=document.getElementById("nuevoNombre").value;
-  const unidad=document.getElementById("nuevaUnidad").value;
-  const archivo=document.getElementById("archivoTabla").files[0];
+  const dm3_h = (3600 * 100) / total;
+  const m3_h  = dm3_h / 1000;
 
-  if(!archivo){ alert("Seleccione CSV"); return; }
+  document.getElementById("consumo_dm3").textContent =
+    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
 
-  const reader=new FileReader();
+  document.getElementById("consumo_m3").textContent =
+    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
 
-  reader.onload=function(e){
+  const tabla = medidor.tabla;
+  const valorComparacion = medidor.unidad === "dm3" ? dm3_h : m3_h;
 
-    const lineas=e.target.result.split(/\r?\n/);
-    const tabla=[];
+  let masCercano = tabla[0];
+  let difMin = Math.abs(valorComparacion - masCercano.caudal);
 
-    for(let i=1;i<lineas.length;i++){
-      if(!lineas[i]) continue;
-
-      let cols=lineas[i].includes(";")
-        ? lineas[i].split(";")
-        : lineas[i].split(",");
-
-      tabla.push({
-        caudal:parseNumero(cols[0]),
-        error:parseNumero(cols[1])
-      });
+  for(let i=1; i<tabla.length; i++){
+    const dif = Math.abs(valorComparacion - tabla[i].caudal);
+    if(dif < difMin){
+      difMin = dif;
+      masCercano = tabla[i];
     }
+  }
 
-    const id=Date.now().toString();
+  const err = masCercano.error;
+  const factorEl = document.getElementById("factor");
 
-    medidores[id]={nombre,unidad,tabla};
+  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
+  factorEl.textContent =
+    "Factor de corrección: " +
+    err.toLocaleString("es-AR",{minimumFractionDigits:2}) + " %";
 
-    localStorage.setItem("medidoresData",JSON.stringify(medidores));
-
-    actualizarSelector();
-    cerrarPanel();
-  };
-
-  reader.readAsText(archivo);
+  document.getElementById("tablaUsada").textContent =
+    "Tabla usada: " + masCercano.caudal +
+    (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
 }
 
-function exportarBackup(){
-  const blob=new Blob([JSON.stringify(medidores,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="backup.json";
-  a.click();
+minEl.addEventListener("input", calcular);
+segEl.addEventListener("input", calcular);
+medidorEl.addEventListener("change", calcular);
+
+// === LISTA ===
+
+function actualizarLista(){
+
+  const cont = document.getElementById("listaMedidores");
+  cont.innerHTML = "";
+
+  for(let key in medidores){
+
+    const med = medidores[key];
+
+    const div = document.createElement("div");
+    div.className = "medItem";
+
+    div.innerHTML = `
+      <div>
+        <strong>${med.nombre}</strong><br>
+        Instrumento: ${med.instrumento}<br>
+        Archivo: ${med.archivo || "Manual"}<br>
+        Modificado: ${med.fechaModificacion || "-"}
+        <div class="menuAcciones" id="menu_${key}">
+          <button onclick="editarMedidor('${key}')">✏️</button>
+          <button onclick="eliminarMedidor('${key}')">🗑️</button>
+        </div>
+      </div>
+      <div class="iconoAccion" onclick="toggleMenu('${key}')">⋮</div>
+    `;
+
+    cont.appendChild(div);
+  }
 }
 
-function importarBackup(){
-  document.getElementById("archivoBackup").click();
+function toggleMenu(clave){
+  const menu = document.getElementById("menu_"+clave);
+  menu.style.display = (menu.style.display === "block") ? "none" : "block";
 }
 
-document.getElementById("archivoBackup").addEventListener("change",function(e){
-  const file=e.target.files[0];
-  if(!file) return;
+// === FORMULARIO ===
 
-  const reader=new FileReader();
+function mostrarFormularioNuevo(){
 
-  reader.onload=function(ev){
-    medidores=JSON.parse(ev.target.result);
-    localStorage.setItem("medidoresData",JSON.stringify(medidores));
-    actualizarSelector();
-  };
+  if(!adminAutorizado){
+    const pass = prompt("Ingrese contraseña de administración:");
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+    adminAutorizado = true;
+  }
 
-  reader.readAsText(file);
-});
+  editandoClave = null;
 
-actualizarSelector();
+  document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("infoArchivoActual").innerHTML =
+    "📎 Archivo actual: <strong>Nuevo medidor</strong>";
+}
+
+function editarMedidor(clave){
+
+  if(!adminAutorizado){
+    const pass = prompt("Ingrese contraseña de administración:");
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+    adminAutorizado = true;
+  }
+
+  editandoClave = clave;
+  const med = medidores[clave];
+
+  document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("nuevoNombre").value = med.nombre;
+  document.getElementById("nuevoInstrumento").value = med.instrumento;
+  document.getElementById("nuevaUnidad").value = med.unidad;
+
+  document.getElementById("infoArchivoActual").innerHTML =
+    "📎 Archivo actual: <strong>" + (med.archivo || "Manual") + "</strong>";
+}
+
+function cerrarFormulario(){
+  document.getElementById("formularioMedidor").style.display = "none";
+}
+
+calcular();
 
 </script>
 </body>
