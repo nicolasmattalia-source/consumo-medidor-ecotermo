@@ -8,7 +8,7 @@
 <style>
 body{
   font-family: Arial;
-  background:#1e293b;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
   color:white;
   text-align:center;
   margin:0;
@@ -30,7 +30,7 @@ body{
   background:#243247;
   padding:30px;
   border-radius:20px;
-  max-width:700px;
+  max-width:750px;
   margin:auto;
 }
 
@@ -57,31 +57,21 @@ body{
   background:rgba(255,255,255,0.2);
 }
 
-.totalSeg{
+.totalSeg{ margin-top:15px; opacity:.8; }
+
+.result{ margin-top:10px; font-size:20px; }
+
+.factor{
   margin-top:15px;
-  opacity:.8;
+  font-size:22px;
+  font-weight:bold;
+  padding:10px;
+  border-radius:12px;
+  display:inline-block;
 }
 
-.result{
-  margin-top:10px;
-  font-size:20px;
-}
-
-.panelAdmin{
-  position:fixed;
-  top:0;
-  left:-400px;
-  width:350px;
-  height:100%;
-  background:#111827;
-  padding:20px;
-  transition:0.3s;
-  overflow:auto;
-}
-
-.panelAdmin.activo{
-  left:0;
-}
+.factor.pos{ color:#22c55e; background:rgba(34,197,94,.15); }
+.factor.neg{ color:#ef4444; background:rgba(239,68,68,.15); }
 
 .overlay{
   position:fixed;
@@ -90,23 +80,36 @@ body{
   display:none;
 }
 
-.overlay.activo{
-  display:block;
+.overlay.activo{ display:block; }
+
+.panelAdmin{
+  position:fixed;
+  top:0;
+  left:-420px;
+  width:380px;
+  height:100%;
+  background:#111827;
+  padding:20px;
+  transition:0.3s;
+  overflow:auto;
 }
 
-/* Responsive */
+.panelAdmin.activo{ left:0; }
+
+.medItem{
+  background:#1f2937;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  text-align:left;
+  font-size:13px;
+}
+
 @media(max-width:600px){
-  .timeContainer{
-    flex-direction:column;
-  }
-  .divider{
-    height:2px;
-    width:100%;
-  }
-  .panelAdmin{
-    width:100%;
-    left:-100%;
-  }
+  .timeContainer{ flex-direction:column; }
+  .divider{ width:100%; height:2px; }
+  .panelAdmin{ width:100%; left:-100%; }
+  .panelAdmin.activo{ left:0; }
 }
 </style>
 </head>
@@ -120,6 +123,8 @@ body{
 <h1>Consumo de medidor</h1>
 
 <select id="medidor"></select>
+
+<p>Tiempo que tarda en consumir <b>100 dm³</b></p>
 
 <div class="timeContainer">
   <div class="timeBox">
@@ -138,6 +143,9 @@ body{
 <div class="result" id="consumo_dm3">— dm³/h</div>
 <div class="result" id="consumo_m3">— m³/h</div>
 
+<div class="factor" id="factor">Factor de corrección: —</div>
+<div id="tablaUsada"></div>
+
 </div>
 
 <div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
@@ -146,99 +154,189 @@ body{
 
 <h3>Administrar medidores</h3>
 
-<button onclick="agregarMedidorDemo()">Agregar demo</button>
-<button onclick="exportarBackup()">Exportar Backup</button>
-<button onclick="importarBackup()">Importar Backup</button>
+<div id="listaMedidores"></div>
+
+<hr>
+
+<button onclick="mostrarFormulario()">➕ Agregar medidor</button>
+<button onclick="exportarBackup()">📤 Exportar</button>
+<button onclick="importarBackup()">📥 Importar</button>
 
 <input type="file" id="archivoBackup" accept=".json" style="display:none">
+
+<div id="formulario" style="display:none; margin-top:15px;">
+  <input type="text" id="nombreMedidor" placeholder="Nombre"><br>
+  <input type="text" id="instrumentoMedidor" placeholder="N° Instrumento"><br>
+  <input type="file" id="archivoTabla" accept=".csv"><br>
+  <button onclick="guardarMedidor()">Guardar</button>
+</div>
 
 </div>
 
 <script>
 
-let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
+const PASSWORD="final";
+let autorizado=false;
+let medidores=JSON.parse(localStorage.getItem("medidoresData"))||{};
+let editando=null;
 
-const medidorEl = document.getElementById("medidor");
-const minEl = document.getElementById("minutos");
-const segEl = document.getElementById("segundos");
+const medidorEl=document.getElementById("medidor");
+const minEl=document.getElementById("minutos");
+const segEl=document.getElementById("segundos");
 
 function abrirPanel(){
-  document.getElementById("panelAdmin").classList.add("activo");
-  document.getElementById("overlay").classList.add("activo");
+ document.getElementById("panelAdmin").classList.add("activo");
+ document.getElementById("overlay").classList.add("activo");
+ actualizarLista();
 }
 
 function cerrarPanel(){
-  document.getElementById("panelAdmin").classList.remove("activo");
-  document.getElementById("overlay").classList.remove("activo");
+ document.getElementById("panelAdmin").classList.remove("activo");
+ document.getElementById("overlay").classList.remove("activo");
+ autorizado=false;
 }
 
 function actualizarSelector(){
-  medidorEl.innerHTML = "";
-  for(let key in medidores){
-    const opt = document.createElement("option");
-    opt.value = key;
-    opt.textContent = medidores[key].nombre;
-    medidorEl.appendChild(opt);
-  }
+ medidorEl.innerHTML="";
+ for(let k in medidores){
+  let o=document.createElement("option");
+  o.value=k;
+  o.textContent=medidores[k].nombre;
+  medidorEl.appendChild(o);
+ }
 }
 actualizarSelector();
 
 function calcular(){
 
-  const med = medidores[medidorEl.value];
-  if(!med) return;
+ const med=medidores[medidorEl.value];
+ if(!med) return;
 
-  const total = (Number(minEl.value)||0)*60 + (Number(segEl.value)||0);
+ let total=(Number(minEl.value)||0)*60+(Number(segEl.value)||0);
 
-  document.getElementById("totalSegundos").textContent =
-    "Total: " + total + " segundos";
+ document.getElementById("totalSegundos").textContent="Total: "+total+" segundos";
 
-  if(total<=0) return;
+ if(total<=0) return;
 
-  const dm3_h = (3600*100)/total;
-  const m3_h = dm3_h/1000;
+ let dm3_h=(3600*100)/total;
+ let m3_h=dm3_h/1000;
 
-  document.getElementById("consumo_dm3").textContent =
-    dm3_h.toFixed(2)+" dm³/h";
+ document.getElementById("consumo_dm3").textContent=dm3_h.toFixed(2)+" dm³/h";
+ document.getElementById("consumo_m3").textContent=m3_h.toFixed(3)+" m³/h";
 
-  document.getElementById("consumo_m3").textContent =
-    m3_h.toFixed(3)+" m³/h";
+ let tabla=med.tabla;
+ let masCercano=tabla[0];
+ let difMin=Math.abs(dm3_h-masCercano.caudal);
+
+ for(let i=1;i<tabla.length;i++){
+  let dif=Math.abs(dm3_h-tabla[i].caudal);
+  if(dif<difMin){
+   difMin=dif;
+   masCercano=tabla[i];
+  }
+ }
+
+ let err=masCercano.error;
+ let factorEl=document.getElementById("factor");
+
+ factorEl.className="factor "+(err<0?"neg":"pos");
+ factorEl.textContent="Factor de corrección: "+err.toFixed(2)+" %";
+
+ document.getElementById("tablaUsada").textContent="Tabla usada: "+masCercano.caudal+" dm³/h";
 }
 
-minEl.addEventListener("input", calcular);
-segEl.addEventListener("input", calcular);
-medidorEl.addEventListener("change", calcular);
+minEl.addEventListener("input",calcular);
+segEl.addEventListener("input",calcular);
+medidorEl.addEventListener("change",calcular);
 
-function agregarMedidorDemo(){
-  medidores["demo"]= {
-    nombre:"Medidor Demo",
-    tabla:[{caudal:1,error:0}]
-  };
+function actualizarLista(){
+ let cont=document.getElementById("listaMedidores");
+ cont.innerHTML="";
+ for(let k in medidores){
+  let m=medidores[k];
+  cont.innerHTML+=`
+  <div class="medItem">
+   <b>${m.nombre}</b><br>
+   Instrumento: ${m.instrumento}<br>
+   Archivo: ${m.archivo||"Manual"}
+  </div>`;
+ }
+}
+
+function mostrarFormulario(){
+ if(!autorizado){
+  let p=prompt("Contraseña:");
+  if(p!==PASSWORD){alert("Incorrecta");return;}
+  autorizado=true;
+ }
+ document.getElementById("formulario").style.display="block";
+}
+
+function guardarMedidor(){
+
+ let nombre=document.getElementById("nombreMedidor").value;
+ let instrumento=document.getElementById("instrumentoMedidor").value;
+ let archivo=document.getElementById("archivoTabla").files[0];
+
+ if(!archivo) return alert("Suba tabla CSV");
+
+ let reader=new FileReader();
+ reader.onload=function(e){
+
+  let lineas=e.target.result.split("\n").slice(1);
+  let tabla=[];
+
+  lineas.forEach(l=>{
+   if(!l.trim()) return;
+   let sep=l.includes(";")?";":",";
+   let p=l.split(sep);
+   let c=parseFloat(p[0].replace(",","."));
+   let err=parseFloat(p[1].replace(",","."));
+   if(!isNaN(c)&&!isNaN(err))
+    tabla.push({caudal:c,error:err});
+  });
+
+  let clave="med_"+Date.now();
+  medidores[clave]={nombre,instrumento,tabla,archivo:archivo.name};
+
   localStorage.setItem("medidoresData",JSON.stringify(medidores));
   actualizarSelector();
+  actualizarLista();
+  alert("Guardado");
+ };
+
+ reader.readAsText(archivo);
 }
 
 function exportarBackup(){
-  const blob = new Blob([JSON.stringify(medidores)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download="backup_medidores.json";
-  a.click();
+ let blob=new Blob([JSON.stringify(medidores,null,2)],{type:"application/json"});
+ let url=URL.createObjectURL(blob);
+ let a=document.createElement("a");
+ a.href=url;
+ a.download="backup_medidores.json";
+ document.body.appendChild(a);
+ a.click();
+ document.body.removeChild(a);
+ URL.revokeObjectURL(url);
 }
 
 function importarBackup(){
-  document.getElementById("archivoBackup").click();
+ document.getElementById("archivoBackup").click();
 }
 
-document.getElementById("archivoBackup").addEventListener("change",function(e){
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    medidores = JSON.parse(ev.target.result);
-    localStorage.setItem("medidoresData",JSON.stringify(medidores));
-    actualizarSelector();
-  }
-  reader.readAsText(e.target.files[0]);
+document.getElementById("archivoBackup").addEventListener("change",e=>{
+ let reader=new FileReader();
+ reader.onload=function(ev){
+  medidores=JSON.parse(ev.target.result);
+  localStorage.setItem("medidoresData",JSON.stringify(medidores));
+  actualizarSelector();
+  actualizarLista();
+  alert("Importado");
+ };
+ reader.readAsText(e.target.files[0]);
 });
+
+calcular();
 
 </script>
 </body>
