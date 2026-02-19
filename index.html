@@ -75,6 +75,12 @@ select, input, button{
   font-weight:bold;
 }
 
+#factor{
+  margin-top:10px;
+  font-size:18px;
+  font-weight:bold;
+}
+
 .overlay{
   position:fixed;
   top:0;
@@ -149,6 +155,7 @@ select, input, button{
   <div id="totalSegundos">Total: — segundos</div>
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
+  <div id="factor">Factor de corrección: —</div>
 
 </div>
 
@@ -215,6 +222,7 @@ let editandoClave = null;
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+const factorEl = document.getElementById("factor");
 
 /* SINCRONIZACIÓN */
 
@@ -227,7 +235,7 @@ onSnapshot(colRef, (snapshot)=>{
   actualizarLista();
 });
 
-/* UI */
+/* UI y CRUD igual que antes */
 
 window.abrirPanel = function(){
   document.getElementById("panelAdmin").classList.add("activo");
@@ -307,20 +315,17 @@ window.guardarMedidor = async function(){
     nombre,
     instrumento,
     unidad,
-    tabla:[]
+    tabla: medidores[clave]?.tabla || []
   });
 
   editandoClave=null;
   document.getElementById("formMedidor").style.display="none";
 }
 
-window.eliminarMedidor = async function(clave){
-  await deleteDoc(doc(db,"medidores",clave));
-}
-
-/* CÁLCULO */
+/* ===== CÁLCULO CON FACTOR ===== */
 
 function calcular(){
+
   let min=Number(minEl.value)||0;
   let seg=Number(segEl.value)||0;
 
@@ -344,10 +349,42 @@ function calcular(){
 
   document.getElementById("consumo_m3").textContent=
     m3_h.toFixed(4)+" m³/h";
+
+  const clave = medidorEl.value;
+  const med = medidores[clave];
+
+  if(!med || !med.tabla || med.tabla.length===0){
+    factorEl.textContent="Factor de corrección: —";
+    factorEl.style.color="white";
+    return;
+  }
+
+  const valor = med.unidad==="dm3" ? dm3_h : m3_h;
+
+  let masCercano = med.tabla[0];
+  let difMin = Math.abs(valor - masCercano.caudal);
+
+  for(let i=1;i<med.tabla.length;i++){
+    const dif = Math.abs(valor - med.tabla[i].caudal);
+    if(dif < difMin){
+      difMin = dif;
+      masCercano = med.tabla[i];
+    }
+  }
+
+  factorEl.textContent =
+    "Factor de corrección: " + masCercano.error.toFixed(2) + " %";
+
+  if(masCercano.error >= 0){
+    factorEl.style.color = "#22c55e";
+  } else {
+    factorEl.style.color = "#ef4444";
+  }
 }
 
 minEl.addEventListener("input",calcular);
 segEl.addEventListener("input",calcular);
+medidorEl.addEventListener("change",calcular);
 
 });
 
