@@ -8,6 +8,7 @@
 
 <style>
 *{ box-sizing:border-box; }
+
 body{
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg,#0f172a,#1e293b);
@@ -17,6 +18,7 @@ body{
   margin:0;
   position:relative;
 }
+
 .menuBtn{
   position:absolute;
   top:20px;
@@ -27,6 +29,7 @@ body{
   font-size:28px;
   cursor:pointer;
 }
+
 .container{
   background:#1e293b;
   padding:35px;
@@ -35,6 +38,7 @@ body{
   margin:0 auto;
   box-shadow:0 12px 35px rgba(0,0,0,0.5);
 }
+
 .logoBox{
   background:white;
   padding:12px 20px;
@@ -42,13 +46,17 @@ body{
   display:inline-block;
   margin-bottom:20px;
 }
+
 .logoBox img{ width:180px; }
+
 select, input, button{
   padding:8px;
   border-radius:8px;
   margin:6px;
 }
+
 button{ cursor:pointer; }
+
 .timeContainer{
   display:flex;
   max-width:520px;
@@ -57,10 +65,13 @@ button{ cursor:pointer; }
   border-radius:14px;
   overflow:hidden;
 }
+
 .timeBox{ flex:1; padding:18px 12px; }
 .divider{ width:2px; background:rgba(255,255,255,0.20); }
+
 .totalSeg{ margin-top:10px; font-size:14px; opacity:.85; }
 .result{ margin-top:15px; font-size:22px; font-weight:bold; }
+
 .factor{
   margin-top:15px;
   font-size:22px;
@@ -69,8 +80,10 @@ button{ cursor:pointer; }
   border-radius:12px;
   display:inline-block;
 }
+
 .factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
 .factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
+
 .overlay{
   position:fixed;
   top:0; left:0;
@@ -79,7 +92,9 @@ button{ cursor:pointer; }
   display:none;
   z-index:900;
 }
+
 .overlay.activo{ display:block; }
+
 .panelAdmin{
   position:fixed;
   top:0;
@@ -93,7 +108,9 @@ button{ cursor:pointer; }
   padding:20px;
   overflow-y:auto;
 }
+
 .panelAdmin.activo{ left:0; }
+
 .medItem{
   background:#1f2937;
   padding:12px;
@@ -105,8 +122,17 @@ button{ cursor:pointer; }
   text-align:left;
   font-size:13px;
 }
-.iconoAccion{ cursor:pointer; font-size:20px; }
-.menuAcciones{ margin-top:6px; display:none; }
+
+.iconoAccion{
+  cursor:pointer;
+  font-size:20px;
+}
+
+.menuAcciones{
+  margin-top:6px;
+  display:none;
+}
+
 .menuAcciones button{
   background:none;
   border:none;
@@ -150,14 +176,12 @@ button{ cursor:pointer; }
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
   <div class="factor" id="factor">Factor de corrección: —</div>
-  <div id="tablaUsada"></div>
 
 </div>
 
 <div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
 
 <div id="panelAdmin" class="panelAdmin">
-
   <h3>Administrar medidores</h3>
   <div id="listaMedidores"></div>
 
@@ -184,7 +208,6 @@ button{ cursor:pointer; }
 
   <br>
   <button onclick="cerrarPanel()">Cerrar</button>
-
 </div>
 
 <script>
@@ -197,6 +220,27 @@ let editandoClave = null;
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+
+function abrirPanel(){
+  document.getElementById("panelAdmin").classList.add("activo");
+  document.getElementById("overlay").classList.add("activo");
+  actualizarLista();
+}
+
+function cerrarPanel(){
+  document.getElementById("panelAdmin").classList.remove("activo");
+  document.getElementById("overlay").classList.remove("activo");
+}
+
+function actualizarSelector(){
+  medidorEl.innerHTML="";
+  for(let key in medidores){
+    const opt=document.createElement("option");
+    opt.value=key;
+    opt.textContent=medidores[key].nombre;
+    medidorEl.appendChild(opt);
+  }
+}
 
 function parseNumero(valor){
   if(!valor) return 0;
@@ -230,7 +274,6 @@ document.getElementById("archivoBackup").addEventListener("change", function(e){
       localStorage.setItem("medidoresData", JSON.stringify(medidores));
       actualizarSelector();
       actualizarLista();
-      calcular();
       alert("Backup importado correctamente");
     }catch(err){
       alert("Error al importar archivo");
@@ -238,16 +281,6 @@ document.getElementById("archivoBackup").addEventListener("change", function(e){
   };
   reader.readAsText(file);
 });
-
-function actualizarSelector(){
-  medidorEl.innerHTML="";
-  for(let key in medidores){
-    const opt=document.createElement("option");
-    opt.value=key;
-    opt.textContent=medidores[key].nombre;
-    medidorEl.appendChild(opt);
-  }
-}
 
 function guardarMedidor(){
 
@@ -282,15 +315,13 @@ function guardarMedidor(){
       });
     }
 
-    const clave = editandoClave || Date.now().toString();
+    const clave = Date.now().toString();
 
     medidores[clave] = {
       nombre,
       instrumento,
       unidad,
-      tabla,
-      archivo: archivo.name,
-      fechaModificacion: new Date().toLocaleString("es-AR")
+      tabla
     };
 
     localStorage.setItem("medidoresData", JSON.stringify(medidores));
@@ -303,55 +334,18 @@ function guardarMedidor(){
   reader.readAsText(archivo);
 }
 
-function calcular(){
-
-  const medidor = medidores[medidorEl.value];
-  if(!medidor) return;
-
-  let min = Number(minEl.value)||0;
-  let seg = Number(segEl.value)||0;
-
-  if(seg>=60){
-    min+=Math.floor(seg/60);
-    seg%=60;
+function mostrarFormularioNuevo(){
+  const pass = prompt("Ingrese contraseña:");
+  if(pass !== PASSWORD_ADMIN){
+    alert("Contraseña incorrecta");
+    return;
   }
-
-  const total=(min*60)+seg;
-  if(total<=0) return;
-
-  const dm3_h=(3600*100)/total;
-  const m3_h=dm3_h/1000;
-
-  document.getElementById("consumo_dm3").textContent =
-    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2})+" dm³/h";
-
-  document.getElementById("consumo_m3").textContent =
-    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4})+" m³/h";
-
-  const valor = medidor.unidad==="dm3"?dm3_h:m3_h;
-
-  let masCercano = medidor.tabla[0];
-  let difMin=Math.abs(valor-masCercano.caudal);
-
-  for(let i=1;i<medidor.tabla.length;i++){
-    const dif=Math.abs(valor-medidor.tabla[i].caudal);
-    if(dif<difMin){
-      difMin=dif;
-      masCercano=medidor.tabla[i];
-    }
-  }
-
-  const err=masCercano.error;
-  const factorEl=document.getElementById("factor");
-
-  factorEl.className = err<0?"factor neg":"factor pos";
-  factorEl.textContent="Factor de corrección: "+
-    err.toLocaleString("es-AR",{minimumFractionDigits:2})+" %";
+  document.getElementById("formularioMedidor").style.display="block";
 }
 
-minEl.addEventListener("input",calcular);
-segEl.addEventListener("input",calcular);
-medidorEl.addEventListener("change",calcular);
+function cerrarFormulario(){
+  document.getElementById("formularioMedidor").style.display="none";
+}
 
 actualizarSelector();
 
