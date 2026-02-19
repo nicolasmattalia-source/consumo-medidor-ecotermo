@@ -75,12 +75,6 @@ select, input, button{
   font-weight:bold;
 }
 
-.factor{
-  margin-top:10px;
-  font-size:18px;
-  font-weight:bold;
-}
-
 .overlay{
   position:fixed;
   top:0;
@@ -120,6 +114,7 @@ select, input, button{
 
 .iconoAccion{
   cursor:pointer;
+  margin-left:8px;
 }
 </style>
 </head>
@@ -152,10 +147,8 @@ select, input, button{
   </div>
 
   <div id="totalSegundos">Total: — segundos</div>
-
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
-  <div class="factor" id="factor">Factor de corrección: —</div>
 
 </div>
 
@@ -167,12 +160,6 @@ select, input, button{
   <hr>
 
   <div id="zonaConfig" style="display:none;">
-
-    <button onclick="exportarDatos()">📤 Exportar</button>
-    <button onclick="document.getElementById('importFile').click()">📥 Importar</button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarDatos(event)">
-
-    <hr>
 
     <button onclick="mostrarFormulario()">➕ Agregar medidor</button>
 
@@ -214,11 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
 const firebaseConfig = {
   apiKey: "AIzaSyDr1J5UGwJfFNG0A5Ip3verQOXtnqA6i10",
   authDomain: "ecotermo-medidor.firebaseapp.com",
-  projectId: "ecotermo-medidor",
-  storageBucket: "ecotermo-medidor.firebasestorage.app",
-  messagingSenderId: "863829552907",
-  appId: "1:863829552907:web:d7489de48f0f047160bc0e",
-  measurementId: "G-SQ145FV93F"
+  projectId: "ecotermo-medidor"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -227,10 +210,13 @@ const colRef = collection(db, "medidores");
 
 let medidores = {};
 let adminAutorizado = false;
+let editandoClave = null;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+
+/* SINCRONIZACIÓN */
 
 onSnapshot(colRef, (snapshot)=>{
   medidores = {};
@@ -241,10 +227,11 @@ onSnapshot(colRef, (snapshot)=>{
   actualizarLista();
 });
 
+/* UI */
+
 window.abrirPanel = function(){
   document.getElementById("panelAdmin").classList.add("activo");
   document.getElementById("overlay").classList.add("activo");
-  actualizarLista();
 }
 
 window.cerrarPanel = function(){
@@ -280,13 +267,30 @@ function actualizarLista(){
     div.className="medItem";
     div.innerHTML=`
       <div>${med.nombre}</div>
-      ${adminAutorizado ? `<div class="iconoAccion" onclick="eliminarMedidor('${key}')">🗑</div>` : ""}
+      ${adminAutorizado ? `
+        <div>
+          <span class="iconoAccion" onclick="editarMedidor('${key}')">✏</span>
+          <span class="iconoAccion" onclick="eliminarMedidor('${key}')">🗑</span>
+        </div>
+      ` : ""}
     `;
     cont.appendChild(div);
   });
 }
 
 window.mostrarFormulario = function(){
+  editandoClave = null;
+  document.getElementById("nuevoNombre").value="";
+  document.getElementById("nuevoInstrumento").value="";
+  document.getElementById("formMedidor").style.display="block";
+}
+
+window.editarMedidor = function(clave){
+  const med = medidores[clave];
+  editandoClave = clave;
+  document.getElementById("nuevoNombre").value=med.nombre;
+  document.getElementById("nuevoInstrumento").value=med.instrumento;
+  document.getElementById("nuevaUnidad").value=med.unidad;
   document.getElementById("formMedidor").style.display="block";
 }
 
@@ -297,7 +301,7 @@ window.guardarMedidor = async function(){
 
   if(!nombre) return;
 
-  const clave="med_"+Date.now();
+  const clave = editandoClave || "med_"+Date.now();
 
   await setDoc(doc(db,"medidores",clave),{
     nombre,
@@ -305,31 +309,16 @@ window.guardarMedidor = async function(){
     unidad,
     tabla:[]
   });
+
+  editandoClave=null;
+  document.getElementById("formMedidor").style.display="none";
 }
 
 window.eliminarMedidor = async function(clave){
   await deleteDoc(doc(db,"medidores",clave));
 }
 
-window.exportarDatos = function(){
-  const blob=new Blob([JSON.stringify(medidores,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="backup_medidores.json";
-  a.click();
-}
-
-window.importarDatos = async function(event){
-  const reader=new FileReader();
-  reader.onload=async function(e){
-    const datos=JSON.parse(e.target.result);
-    for(const clave in datos){
-      await setDoc(doc(db,"medidores",clave),datos[clave]);
-    }
-  };
-  reader.readAsText(event.target.files[0]);
-}
+/* CÁLCULO */
 
 function calcular(){
   let min=Number(minEl.value)||0;
