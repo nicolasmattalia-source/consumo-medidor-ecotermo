@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Consumo de medidor húmedo</title>
+<title>Consumo de medidor</title>
 
 <link rel="icon" href="ecotermo.png">
 
 <style>
-/* Base */
 *{ box-sizing:border-box; }
+
 body{
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg,#0f172a,#1e293b);
@@ -17,244 +17,282 @@ body{
   text-align:center;
   padding:40px 20px;
   margin:0;
+  position:relative;
 }
 
+/* Botón menú */
+.menuBtn{
+  position:absolute;
+  top:20px;
+  left:20px;
+  background:none;
+  border:none;
+  color:white;
+  font-size:28px;
+  cursor:pointer;
+}
+
+/* Contenedor principal */
 .container{
   background:#1e293b;
   padding:35px;
   border-radius:20px;
-  max-width:650px;
-  width:100%;
+  max-width:750px;
   margin:0 auto;
   box-shadow:0 12px 35px rgba(0,0,0,0.5);
 }
 
-/* LOGO */
 .logoBox{
   background:white;
   padding:12px 20px;
   border-radius:14px;
   display:inline-block;
   margin-bottom:20px;
-  box-shadow:0 8px 20px rgba(0,0,0,0.4);
-}
-.logoBox img{
-  width:180px;
-  height:auto;
-  display:block;
 }
 
-/* Textos */
-h1{
-  margin:0 0 14px;
-  font-size:24px;
-}
-p{
-  margin:0 0 10px;
-  opacity:.9;
+.logoBox img{ width:180px; }
+
+select, input, button{
+  padding:8px;
+  border-radius:8px;
+  margin:6px;
 }
 
-/* CONTENEDOR MINUTOS / SEGUNDOS */
+button{ cursor:pointer; }
+
 .timeContainer{
   display:flex;
-  width:100%;
   max-width:520px;
-  margin:20px auto 10px auto;
+  margin:20px auto;
   background:#0f172a;
   border-radius:14px;
   overflow:hidden;
 }
 
-.timeBox{
-  flex:1;
-  padding:18px 12px;
-  text-align:center;
-}
+.timeBox{ flex:1; padding:18px 12px; }
+.divider{ width:2px; background:rgba(255,255,255,0.20); }
 
-.divider{
-  width:2px;
-  background:rgba(255,255,255,0.20);
-}
-
-.timeLabel{
-  font-weight:bold;
-  margin-bottom:10px;
-}
-
-/* Inputs (ancho fijo lindo en PC, se adapta en móvil) */
-.timeBox input{
-  width:min(160px, 90%);
-  padding:10px 12px;
-  font-size:18px;
-  border-radius:12px;
-  border:none;
-  text-align:center;
-  display:block;
-  margin:0 auto;
-}
-
-/* Total */
-.totalSeg{
-  margin-top:12px;
-  font-size:16px;
-  opacity:.9;
-}
-
-/* Resultados */
 .result{
-  margin-top:22px;
-  font-size:26px;
+  margin-top:15px;
+  font-size:22px;
   font-weight:bold;
-  word-break:break-word;
 }
 
-/* Factor */
 .factor{
-  margin-top:20px;
-  font-size:24px;
+  margin-top:15px;
+  font-size:22px;
   font-weight:bold;
-  padding:12px 14px;
-  border-radius:14px;
+  padding:10px;
+  border-radius:12px;
   display:inline-block;
-  max-width:100%;
 }
 
 .factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
 .factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
 .factor.neu{ color:#e5e7eb; }
 
-.tablaUsada{
-  margin-top:10px;
-  font-size:14px;
-  opacity:.85;
+/* Overlay */
+.overlay{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  z-index:900;
+}
+.overlay.activo{ display:block; }
+
+/* Panel lateral */
+.panelAdmin{
+  position:fixed;
+  top:0;
+  left:-400px;
+  width:350px;
+  height:100%;
+  background:#111827;
+  box-shadow:5px 0 20px rgba(0,0,0,0.5);
+  transition:left 0.3s ease;
+  z-index:1000;
+  padding:20px;
+  overflow-y:auto;
+}
+.panelAdmin.activo{ left:0; }
+
+/* Medidores */
+.medItem{
+  background:#1f2937;
+  padding:10px;
+  margin:8px 0;
+  border-radius:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
-/* ✅ Responsive para CELULAR (arregla tu problema) */
-@media (max-width: 520px){
+.iconoAccion{
+  cursor:pointer;
+  font-size:20px;
+}
 
-  body{
-    padding:18px 10px;
-  }
+.menuAcciones{
+  margin-top:8px;
+  display:none;
+}
 
-  .container{
-    padding:16px;
-    border-radius:18px;
-  }
+.menuAcciones button{
+  background:none;
+  border:none;
+  color:white;
+  font-size:18px;
+  cursor:pointer;
+  margin-right:10px;
+}
 
-  .logoBox{
-    padding:8px 12px;
-    margin-bottom:12px;
-  }
+.menuAcciones button:hover{
+  transform:scale(1.1);
+}
 
-  .logoBox img{
-    width:120px;
-  }
-
-  h1{
-    font-size:20px;
-    line-height:1.2;
-    margin-bottom:10px;
-  }
-
-  p{
-    font-size:15px;
-  }
-
-  .timeContainer{
-    max-width:100%;
-    margin-top:16px;
-  }
-
-  .timeBox{
-    padding:12px 8px;
-  }
-
-  .timeLabel{
-    font-size:14px;
-  }
-
-  .timeBox input{
+/* Responsive */
+@media (max-width:600px){
+  .panelAdmin{
     width:100%;
-    max-width:120px;   /* 🔥 evita que sea gigante */
-    font-size:16px;
-    padding:8px;
-    border-radius:10px;
+    left:-100%;
   }
-
-  .totalSeg{
-    font-size:14px;
-    margin-top:10px;
+  .panelAdmin.activo{
+    left:0;
   }
-
-  .result{
-    font-size:20px;
-    margin-top:14px;
-  }
-
-  .factor{
-    font-size:18px;
-    padding:8px 12px;
-    margin-top:16px;
-  }
-
-  .tablaUsada{
-    font-size:13px;
-  }
-}
-
-/* Extra: si la pantalla es MUY chica, apila */
-@media (max-width: 360px){
-  .timeContainer{ flex-direction:column; }
-  .divider{ width:100%; height:2px; }
 }
 </style>
 </head>
 
 <body>
+
+<button class="menuBtn" onclick="abrirPanel()">☰</button>
+
 <div class="container">
 
   <div class="logoBox">
-    <img src="ecotermo.png" alt="Ecotermo">
+    <img src="ecotermo.png">
   </div>
 
-  <h1>Consumo de medidor húmedo</h1>
+  <h1>Consumo de medidor</h1>
+
+  <select id="medidor"></select>
+
   <p>Tiempo que tarda en consumir <b>100 dm³</b></p>
 
   <div class="timeContainer">
     <div class="timeBox">
-      <div class="timeLabel">Minutos</div>
-      <input type="number" id="minutos" min="0" inputmode="numeric" placeholder="0">
+      Minutos<br>
+      <input type="number" id="minutos" min="0">
     </div>
 
     <div class="divider"></div>
 
     <div class="timeBox">
-      <div class="timeLabel">Segundos</div>
-      <input type="number" id="segundos" min="0" inputmode="numeric" placeholder="0">
+      Segundos<br>
+      <input type="number" id="segundos" min="0">
     </div>
   </div>
 
-  <div class="totalSeg" id="totalSegundos">Total: — segundos</div>
-
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
-
   <div class="factor neu" id="factor">Factor de corrección: —</div>
-  <div class="tablaUsada" id="tablaUsada"></div>
+  <div id="tablaUsada"></div>
+
+</div>
+
+<div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
+
+<div id="panelAdmin" class="panelAdmin">
+
+  <h3>Administrar medidores</h3>
+
+  <div id="listaMedidores"></div>
+
+  <hr>
+
+  <button onclick="mostrarFormularioNuevo()">➕ Agregar medidor</button>
+
+  <div id="formularioMedidor" style="display:none; margin-top:20px;">
+
+    <h4>Agregar / Editar medidor</h4>
+
+    <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
+    <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
+
+    <select id="nuevaUnidad">
+      <option value="dm3">Trabaja en dm³/h</option>
+      <option value="m3">Trabaja en m³/h</option>
+    </select>
+
+    <input type="file" id="archivoTabla" accept=".csv">
+
+    <button onclick="guardarMedidor()">Guardar</button>
+    <button onclick="cerrarFormulario()">Cancelar</button>
+
+  </div>
+
+  <br>
+  <button onclick="cerrarPanel()">Cerrar</button>
 
 </div>
 
 <script>
-// Tabla del certificado (error %)
-const tabla = [
-  { caudal: 250,  error:  0.39 },
-  { caudal: 500,  error:  0.47 },
-  { caudal: 1250, error:  0.39 },
-  { caudal: 2500, error: -0.47 }
-];
 
+// ================= ESTRUCTURA =================
+
+let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {
+
+  humedo: {
+    nombre: "Medidor Húmedo",
+    instrumento: "274",
+    unidad: "dm3",
+    tabla: [
+      { caudal: 250,  error:  0.39 },
+      { caudal: 500,  error:  0.47 },
+      { caudal: 1250, error:  0.39 },
+      { caudal: 2500, error: -0.47 }
+    ]
+  },
+
+  seco_101: {
+    nombre: "Medidor Seco 101",
+    instrumento: "101",
+    unidad: "m3",
+    tabla: [
+      { caudal: 3.00, error: -1.52 },
+      { caudal: 2.00, error: -1.62 },
+      { caudal: 1.00, error: -1.93 },
+      { caudal: 0.80, error: -1.90 },
+      { caudal: 0.60, error: -1.89 },
+      { caudal: 0.40, error: -2.02 },
+      { caudal: 0.20, error: -2.89 }
+    ]
+  }
+
+};
+
+let editandoClave = null;
+
+const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+
+// ================= SELECTOR =================
+
+function actualizarSelector(){
+  medidorEl.innerHTML = "";
+  for(let key in medidores){
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = medidores[key].nombre;
+    medidorEl.appendChild(opt);
+  }
+}
+actualizarSelector();
+
+// ================= CALCULO =================
 
 function clamp(n){
   if (!Number.isFinite(n) || n < 0) return 0;
@@ -262,35 +300,21 @@ function clamp(n){
 }
 
 function calcular(){
+
+  const medidor = medidores[medidorEl.value];
+  if(!medidor) return;
+
   let min = clamp(Number(minEl.value));
   let seg = clamp(Number(segEl.value));
 
-  // Si segundos >= 60, convertir a minutos automáticamente
   if(seg >= 60){
     min += Math.floor(seg / 60);
     seg = seg % 60;
   }
 
-  // Mostrar normalizado
-  minEl.value = (minEl.value === "" && min === 0) ? "" : min;
-  segEl.value = (segEl.value === "" && seg === 0) ? "" : seg;
-
   const total = (min * 60) + seg;
+  if(total <= 0) return;
 
-  document.getElementById("totalSegundos").textContent =
-    "Total: " + total.toLocaleString("es-AR") + " segundos";
-
-  if(total <= 0){
-    document.getElementById("consumo_dm3").textContent = "— dm³/h";
-    document.getElementById("consumo_m3").textContent  = "— m³/h";
-    const f = document.getElementById("factor");
-    f.textContent = "Factor de corrección: —";
-    f.className = "factor neu";
-    document.getElementById("tablaUsada").textContent = "";
-    return;
-  }
-
-  // Consumo por hora
   const dm3_h = (3600 * 100) / total;
   const m3_h  = dm3_h / 1000;
 
@@ -300,41 +324,173 @@ function calcular(){
   document.getElementById("consumo_m3").textContent =
     m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
 
-  // Buscar el punto de tabla más cercano
+  const tabla = medidor.tabla;
+  const valorComparacion = medidor.unidad === "dm3" ? dm3_h : m3_h;
+
   let masCercano = tabla[0];
-  let difMin = Math.abs(dm3_h - masCercano.caudal);
+  let difMin = Math.abs(valorComparacion - masCercano.caudal);
 
   for(let i=1; i<tabla.length; i++){
-    const dif = Math.abs(dm3_h - tabla[i].caudal);
+    const dif = Math.abs(valorComparacion - tabla[i].caudal);
     if(dif < difMin){
       difMin = dif;
       masCercano = tabla[i];
     }
   }
 
-  // Mostrar factor
   const err = masCercano.error;
   const factorEl = document.getElementById("factor");
 
   factorEl.className = (err < 0) ? "factor neg" : "factor pos";
   factorEl.textContent =
     "Factor de corrección: " +
-    err.toLocaleString("es-AR",{minimumFractionDigits:2, maximumFractionDigits:2}) +
+    err.toLocaleString("es-AR",{minimumFractionDigits:2}) +
     " %";
 
   document.getElementById("tablaUsada").textContent =
-    "Tabla usada: " + masCercano.caudal + " dm³/h";
+    "Tabla usada: " + masCercano.caudal +
+    (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
+}
+
+// ================= PANEL =================
+
+function abrirPanel(){
+  document.getElementById("panelAdmin").classList.add("activo");
+  document.getElementById("overlay").classList.add("activo");
+  actualizarLista();
+}
+
+function cerrarPanel(){
+  document.getElementById("panelAdmin").classList.remove("activo");
+  document.getElementById("overlay").classList.remove("activo");
+}
+
+// ================= LISTA =================
+
+function actualizarLista(){
+
+  const cont = document.getElementById("listaMedidores");
+  cont.innerHTML = "";
+
+  for(let key in medidores){
+
+    const med = medidores[key];
+
+    const div = document.createElement("div");
+    div.className = "medItem";
+
+    div.innerHTML = `
+      <div>
+        <strong>${med.nombre}</strong><br>
+        Instrumento: ${med.instrumento}
+        <div class="menuAcciones" id="menu_${key}">
+          <button onclick="editarMedidor('${key}')" title="Editar">✏️</button>
+          <button onclick="eliminarMedidor('${key}')" title="Eliminar">🗑️</button>
+        </div>
+      </div>
+      <div class="iconoAccion" onclick="toggleMenu('${key}')">⋮</div>
+    `;
+
+    cont.appendChild(div);
+  }
+}
+
+function toggleMenu(clave){
+  const menu = document.getElementById("menu_"+clave);
+  menu.style.display = (menu.style.display === "block") ? "none" : "block";
+}
+
+// ================= FORMULARIO =================
+
+function mostrarFormularioNuevo(){
+  editandoClave = null;
+  document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("nuevoNombre").value = "";
+  document.getElementById("nuevoInstrumento").value = "";
+}
+
+function cerrarFormulario(){
+  document.getElementById("formularioMedidor").style.display = "none";
+}
+
+function editarMedidor(clave){
+  editandoClave = clave;
+  const med = medidores[clave];
+
+  document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("nuevoNombre").value = med.nombre;
+  document.getElementById("nuevoInstrumento").value = med.instrumento;
+  document.getElementById("nuevaUnidad").value = med.unidad;
+}
+
+// ================= GUARDAR =================
+
+function guardarMedidor(){
+
+  const nombre = document.getElementById("nuevoNombre").value.trim();
+  const instrumento = document.getElementById("nuevoInstrumento").value.trim();
+  const unidad = document.getElementById("nuevaUnidad").value;
+  const archivo = document.getElementById("archivoTabla").files[0];
+
+  if(!nombre) return alert("Nombre requerido");
+
+  let tabla = editandoClave ? medidores[editandoClave].tabla : [];
+
+  if(archivo){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const texto = e.target.result;
+      const lineas = texto.split("\n").slice(1);
+      tabla = [];
+
+      lineas.forEach(linea=>{
+        const partes = linea.split(",");
+        if(partes.length>=2){
+          const caudal = parseFloat(partes[0]);
+          const error = parseFloat(partes[1]);
+          if(!isNaN(caudal)&&!isNaN(error)){
+            tabla.push({caudal,error});
+          }
+        }
+      });
+
+      finalizarGuardado(nombre,instrumento,unidad,tabla);
+    };
+    reader.readAsText(archivo);
+  }else{
+    finalizarGuardado(nombre,instrumento,unidad,tabla);
+  }
+}
+
+function finalizarGuardado(nombre,instrumento,unidad,tabla){
+
+  const clave = editandoClave || "med_"+Date.now();
+
+  medidores[clave] = { nombre, instrumento, unidad, tabla };
+
+  localStorage.setItem("medidoresData", JSON.stringify(medidores));
+
+  cerrarFormulario();
+  actualizarSelector();
+  actualizarLista();
+}
+
+// ================= ELIMINAR =================
+
+function eliminarMedidor(clave){
+  if(!confirm("¿Eliminar medidor?")) return;
+  delete medidores[clave];
+  localStorage.setItem("medidoresData", JSON.stringify(medidores));
+  actualizarSelector();
+  actualizarLista();
 }
 
 minEl.addEventListener("input", calcular);
 segEl.addEventListener("input", calcular);
+medidorEl.addEventListener("change", calcular);
+
 calcular();
+
 </script>
-
 </body>
 </html>
-
-</body>
-</html>
-
-
