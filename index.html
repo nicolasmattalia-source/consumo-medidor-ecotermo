@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Consumo de medidor</title>
-
 <link rel="icon" href="ecotermo.png">
 
 <style>
@@ -20,7 +19,6 @@ body{
   position:relative;
 }
 
-/* Botón menú */
 .menuBtn{
   position:absolute;
   top:20px;
@@ -32,7 +30,6 @@ body{
   cursor:pointer;
 }
 
-/* Contenedor principal */
 .container{
   background:#1e293b;
   padding:35px;
@@ -72,6 +69,12 @@ button{ cursor:pointer; }
 .timeBox{ flex:1; padding:18px 12px; }
 .divider{ width:2px; background:rgba(255,255,255,0.20); }
 
+.totalSeg{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.85;
+}
+
 .result{
   margin-top:15px;
   font-size:22px;
@@ -89,9 +92,7 @@ button{ cursor:pointer; }
 
 .factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
 .factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
-.factor.neu{ color:#e5e7eb; }
 
-/* Overlay */
 .overlay{
   position:fixed;
   top:0; left:0;
@@ -102,7 +103,6 @@ button{ cursor:pointer; }
 }
 .overlay.activo{ display:block; }
 
-/* Panel lateral */
 .panelAdmin{
   position:fixed;
   top:0;
@@ -118,7 +118,6 @@ button{ cursor:pointer; }
 }
 .panelAdmin.activo{ left:0; }
 
-/* Medidores */
 .medItem{
   background:#1f2937;
   padding:10px;
@@ -148,11 +147,6 @@ button{ cursor:pointer; }
   margin-right:10px;
 }
 
-.menuAcciones button:hover{
-  transform:scale(1.1);
-}
-
-/* Responsive */
 @media (max-width:600px){
   .panelAdmin{
     width:100%;
@@ -186,18 +180,18 @@ button{ cursor:pointer; }
       Minutos<br>
       <input type="number" id="minutos" min="0">
     </div>
-
     <div class="divider"></div>
-
     <div class="timeBox">
       Segundos<br>
       <input type="number" id="segundos" min="0">
     </div>
   </div>
 
+  <div class="totalSeg" id="totalSegundos">Total: — segundos</div>
+
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
-  <div class="factor neu" id="factor">Factor de corrección: —</div>
+  <div class="factor" id="factor">Factor de corrección: —</div>
   <div id="tablaUsada"></div>
 
 </div>
@@ -215,9 +209,6 @@ button{ cursor:pointer; }
   <button onclick="mostrarFormularioNuevo()">➕ Agregar medidor</button>
 
   <div id="formularioMedidor" style="display:none; margin-top:20px;">
-
-    <h4>Agregar / Editar medidor</h4>
-
     <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
     <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
 
@@ -230,7 +221,6 @@ button{ cursor:pointer; }
 
     <button onclick="guardarMedidor()">Guardar</button>
     <button onclick="cerrarFormulario()">Cancelar</button>
-
   </div>
 
   <br>
@@ -240,46 +230,15 @@ button{ cursor:pointer; }
 
 <script>
 
-// ================= ESTRUCTURA =================
+const PASSWORD_ADMIN = "final";
+let adminAutorizado = false;
 
-let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {
-
-  humedo: {
-    nombre: "Medidor Húmedo",
-    instrumento: "274",
-    unidad: "dm3",
-    tabla: [
-      { caudal: 250,  error:  0.39 },
-      { caudal: 500,  error:  0.47 },
-      { caudal: 1250, error:  0.39 },
-      { caudal: 2500, error: -0.47 }
-    ]
-  },
-
-  seco_101: {
-    nombre: "Medidor Seco 101",
-    instrumento: "101",
-    unidad: "m3",
-    tabla: [
-      { caudal: 3.00, error: -1.52 },
-      { caudal: 2.00, error: -1.62 },
-      { caudal: 1.00, error: -1.93 },
-      { caudal: 0.80, error: -1.90 },
-      { caudal: 0.60, error: -1.89 },
-      { caudal: 0.40, error: -2.02 },
-      { caudal: 0.20, error: -2.89 }
-    ]
-  }
-
-};
-
+let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
 let editandoClave = null;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
-
-// ================= SELECTOR =================
 
 function actualizarSelector(){
   medidorEl.innerHTML = "";
@@ -292,20 +251,13 @@ function actualizarSelector(){
 }
 actualizarSelector();
 
-// ================= CALCULO =================
-
-function clamp(n){
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
-}
-
 function calcular(){
 
   const medidor = medidores[medidorEl.value];
   if(!medidor) return;
 
-  let min = clamp(Number(minEl.value));
-  let seg = clamp(Number(segEl.value));
+  let min = Number(minEl.value) || 0;
+  let seg = Number(segEl.value) || 0;
 
   if(seg >= 60){
     min += Math.floor(seg / 60);
@@ -313,6 +265,10 @@ function calcular(){
   }
 
   const total = (min * 60) + seg;
+
+  document.getElementById("totalSegundos").textContent =
+    "Total: " + total.toLocaleString("es-AR") + " segundos";
+
   if(total <= 0) return;
 
   const dm3_h = (3600 * 100) / total;
@@ -344,15 +300,12 @@ function calcular(){
   factorEl.className = (err < 0) ? "factor neg" : "factor pos";
   factorEl.textContent =
     "Factor de corrección: " +
-    err.toLocaleString("es-AR",{minimumFractionDigits:2}) +
-    " %";
+    err.toLocaleString("es-AR",{minimumFractionDigits:2}) + " %";
 
   document.getElementById("tablaUsada").textContent =
     "Tabla usada: " + masCercano.caudal +
     (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
 }
-
-// ================= PANEL =================
 
 function abrirPanel(){
   document.getElementById("panelAdmin").classList.add("activo");
@@ -363,17 +316,14 @@ function abrirPanel(){
 function cerrarPanel(){
   document.getElementById("panelAdmin").classList.remove("activo");
   document.getElementById("overlay").classList.remove("activo");
+  adminAutorizado = false;
 }
 
-// ================= LISTA =================
-
 function actualizarLista(){
-
   const cont = document.getElementById("listaMedidores");
   cont.innerHTML = "";
 
   for(let key in medidores){
-
     const med = medidores[key];
 
     const div = document.createElement("div");
@@ -384,8 +334,8 @@ function actualizarLista(){
         <strong>${med.nombre}</strong><br>
         Instrumento: ${med.instrumento}
         <div class="menuAcciones" id="menu_${key}">
-          <button onclick="editarMedidor('${key}')" title="Editar">✏️</button>
-          <button onclick="eliminarMedidor('${key}')" title="Eliminar">🗑️</button>
+          <button onclick="editarMedidor('${key}')">✏️</button>
+          <button onclick="eliminarMedidor('${key}')">🗑️</button>
         </div>
       </div>
       <div class="iconoAccion" onclick="toggleMenu('${key}')">⋮</div>
@@ -400,20 +350,30 @@ function toggleMenu(clave){
   menu.style.display = (menu.style.display === "block") ? "none" : "block";
 }
 
-// ================= FORMULARIO =================
-
 function mostrarFormularioNuevo(){
+  if(!adminAutorizado){
+    alert("Primero debe editar un medidor para autenticarse.");
+    return;
+  }
+
   editandoClave = null;
   document.getElementById("formularioMedidor").style.display = "block";
-  document.getElementById("nuevoNombre").value = "";
-  document.getElementById("nuevoInstrumento").value = "";
-}
-
-function cerrarFormulario(){
-  document.getElementById("formularioMedidor").style.display = "none";
 }
 
 function editarMedidor(clave){
+
+  if(!adminAutorizado){
+
+    const pass = prompt("Ingrese contraseña de administración:");
+
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+
+    adminAutorizado = true;
+  }
+
   editandoClave = clave;
   const med = medidores[clave];
 
@@ -423,7 +383,9 @@ function editarMedidor(clave){
   document.getElementById("nuevaUnidad").value = med.unidad;
 }
 
-// ================= GUARDAR =================
+function cerrarFormulario(){
+  document.getElementById("formularioMedidor").style.display = "none";
+}
 
 function guardarMedidor(){
 
@@ -437,26 +399,41 @@ function guardarMedidor(){
   let tabla = editandoClave ? medidores[editandoClave].tabla : [];
 
   if(archivo){
+
     const reader = new FileReader();
+
     reader.onload = function(e){
+
       const texto = e.target.result;
       const lineas = texto.split("\n").slice(1);
       tabla = [];
 
-      lineas.forEach(linea=>{
-        const partes = linea.split(",");
-        if(partes.length>=2){
-          const caudal = parseFloat(partes[0]);
-          const error = parseFloat(partes[1]);
-          if(!isNaN(caudal)&&!isNaN(error)){
-            tabla.push({caudal,error});
-          }
+      lineas.forEach(linea => {
+
+        if(!linea.trim()) return;
+
+        let separador = linea.includes(";") ? ";" : ",";
+        let partes = linea.split(separador);
+
+        if(partes.length < 2) return;
+
+        let caudalStr = partes[0].trim().replace(",", ".");
+        let errorStr  = partes[1].trim().replace(",", ".");
+
+        let caudal = parseFloat(caudalStr);
+        let error  = parseFloat(errorStr);
+
+        if(!isNaN(caudal) && !isNaN(error)){
+          tabla.push({ caudal, error });
         }
+
       });
 
       finalizarGuardado(nombre,instrumento,unidad,tabla);
     };
+
     reader.readAsText(archivo);
+
   }else{
     finalizarGuardado(nombre,instrumento,unidad,tabla);
   }
@@ -475,10 +452,14 @@ function finalizarGuardado(nombre,instrumento,unidad,tabla){
   actualizarLista();
 }
 
-// ================= ELIMINAR =================
-
 function eliminarMedidor(clave){
+  if(!adminAutorizado){
+    alert("Debe autenticarse primero editando un medidor.");
+    return;
+  }
+
   if(!confirm("¿Eliminar medidor?")) return;
+
   delete medidores[clave];
   localStorage.setItem("medidoresData", JSON.stringify(medidores));
   actualizarSelector();
@@ -494,4 +475,3 @@ calcular();
 </script>
 </body>
 </html>
-
