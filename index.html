@@ -166,7 +166,6 @@ button{ cursor:pointer; }
 <button class="menuBtn" onclick="abrirPanel()">☰</button>
 
 <div class="container">
-
   <div class="logoBox">
     <img src="ecotermo.png">
   </div>
@@ -190,12 +189,10 @@ button{ cursor:pointer; }
   </div>
 
   <div class="totalSeg" id="totalSegundos">Total: — segundos</div>
-
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
   <div class="factor neu" id="factor">Factor de corrección: —</div>
   <div id="tablaUsada"></div>
-
 </div>
 
 <div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
@@ -204,6 +201,15 @@ button{ cursor:pointer; }
 
   <button onclick="pedirPassword()">⚙ Configuración</button>
   <hr>
+
+  <div id="zonaConfig" style="display:none;">
+
+    <button onclick="exportarDatos()">📤 Exportar datos</button>
+    <button onclick="document.getElementById('importFile').click()">📥 Importar datos</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarDatos(event)">
+
+    <hr>
+  </div>
 
   <h3>Administrar medidores</h3>
 
@@ -216,9 +222,7 @@ button{ cursor:pointer; }
   </button>
 
   <div id="formularioMedidor" style="display:none; margin-top:20px;">
-
     <h4>Agregar / Editar medidor</h4>
-
     <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
     <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
 
@@ -231,7 +235,6 @@ button{ cursor:pointer; }
 
     <button onclick="guardarMedidor()">Guardar</button>
     <button onclick="cerrarFormulario()">Cancelar</button>
-
   </div>
 
   <br>
@@ -249,6 +252,7 @@ const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
 const btnAgregar = document.getElementById("btnAgregar");
+const zonaConfig = document.getElementById("zonaConfig");
 
 function actualizarSelector(){
   medidorEl.innerHTML = "";
@@ -261,72 +265,48 @@ function actualizarSelector(){
 }
 actualizarSelector();
 
-function calcular(){
-
-  const medidor = medidores[medidorEl.value];
-  if(!medidor || !medidor.tabla || medidor.tabla.length === 0) return;
-
-  let min = Number(minEl.value) || 0;
-  let seg = Number(segEl.value) || 0;
-
-  if(seg >= 60){
-    min += Math.floor(seg / 60);
-    seg = seg % 60;
-  }
-
-  const total = (min * 60) + seg;
-
-  document.getElementById("totalSegundos").textContent =
-    "Total: " + total.toLocaleString("es-AR") + " segundos";
-
-  if(total <= 0) return;
-
-  const dm3_h = (3600 * 100) / total;
-  const m3_h  = dm3_h / 1000;
-
-  document.getElementById("consumo_dm3").textContent =
-    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
-
-  document.getElementById("consumo_m3").textContent =
-    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
-
-  const tabla = medidor.tabla;
-  const valorComparacion = medidor.unidad === "dm3" ? dm3_h : m3_h;
-
-  let masCercano = tabla[0];
-  let difMin = Math.abs(valorComparacion - masCercano.caudal);
-
-  for(let i=1; i<tabla.length; i++){
-    const dif = Math.abs(valorComparacion - tabla[i].caudal);
-    if(dif < difMin){
-      difMin = dif;
-      masCercano = tabla[i];
-    }
-  }
-
-  const err = masCercano.error;
-  const factorEl = document.getElementById("factor");
-
-  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
-  factorEl.textContent =
-    "Factor de corrección: " +
-    err.toLocaleString("es-AR",{minimumFractionDigits:2}) + " %";
-
-  document.getElementById("tablaUsada").textContent =
-    "Tabla usada: " + masCercano.caudal +
-    (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
-}
-
 function pedirPassword(){
   const pass = prompt("Ingrese contraseña:");
   if(pass === "final"){
     adminAutorizado = true;
     btnAgregar.style.display = "block";
+    zonaConfig.style.display = "block";
     alert("Modo configuración activado");
     actualizarLista();
   }else{
     alert("Contraseña incorrecta");
   }
+}
+
+function exportarDatos(){
+  const dataStr = JSON.stringify(medidores, null, 2);
+  const blob = new Blob([dataStr], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "backup_medidores.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importarDatos(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const datos = JSON.parse(e.target.result);
+      medidores = datos;
+      localStorage.setItem("medidoresData", JSON.stringify(medidores));
+      actualizarSelector();
+      actualizarLista();
+      alert("Datos importados correctamente");
+    }catch(err){
+      alert("Archivo inválido");
+    }
+  };
+  reader.readAsText(file);
 }
 
 function abrirPanel(){
@@ -346,7 +326,6 @@ function actualizarLista(){
 
   for(let key in medidores){
     const med = medidores[key];
-
     const div = document.createElement("div");
     div.className = "medItem";
 
@@ -370,7 +349,6 @@ function actualizarLista(){
       </div>
       ${acciones}
     `;
-
     cont.appendChild(div);
   }
 }
@@ -465,6 +443,60 @@ function eliminarMedidor(clave){
 minEl.addEventListener("input", calcular);
 segEl.addEventListener("input", calcular);
 medidorEl.addEventListener("change", calcular);
+
+function calcular(){
+  const medidor = medidores[medidorEl.value];
+  if(!medidor || !medidor.tabla || medidor.tabla.length === 0) return;
+
+  let min = Number(minEl.value) || 0;
+  let seg = Number(segEl.value) || 0;
+
+  if(seg >= 60){
+    min += Math.floor(seg / 60);
+    seg = seg % 60;
+  }
+
+  const total = (min * 60) + seg;
+  document.getElementById("totalSegundos").textContent =
+    "Total: " + total.toLocaleString("es-AR") + " segundos";
+
+  if(total <= 0) return;
+
+  const dm3_h = (3600 * 100) / total;
+  const m3_h  = dm3_h / 1000;
+
+  document.getElementById("consumo_dm3").textContent =
+    dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
+
+  document.getElementById("consumo_m3").textContent =
+    m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
+
+  const tabla = medidor.tabla;
+  const valorComparacion = medidor.unidad === "dm3" ? dm3_h : m3_h;
+
+  let masCercano = tabla[0];
+  let difMin = Math.abs(valorComparacion - masCercano.caudal);
+
+  for(let i=1; i<tabla.length; i++){
+    const dif = Math.abs(valorComparacion - tabla[i].caudal);
+    if(dif < difMin){
+      difMin = dif;
+      masCercano = tabla[i];
+    }
+  }
+
+  const err = masCercano.error;
+  const factorEl = document.getElementById("factor");
+
+  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
+  factorEl.textContent =
+    "Factor de corrección: " +
+    err.toLocaleString("es-AR",{minimumFractionDigits:2}) + " %";
+
+  document.getElementById("tablaUsada").textContent =
+    "Tabla usada: " + masCercano.caudal +
+    (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
+}
 
 calcular();
 
