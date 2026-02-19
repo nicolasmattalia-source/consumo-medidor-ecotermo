@@ -106,8 +106,8 @@ button{ cursor:pointer; }
 .panelAdmin{
   position:fixed;
   top:0;
-  left:-400px;
-  width:350px;
+  left:-420px;
+  width:380px;
   height:100%;
   background:#111827;
   box-shadow:5px 0 20px rgba(0,0,0,0.5);
@@ -120,12 +120,14 @@ button{ cursor:pointer; }
 
 .medItem{
   background:#1f2937;
-  padding:10px;
-  margin:8px 0;
-  border-radius:10px;
+  padding:12px;
+  margin:10px 0;
+  border-radius:12px;
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-start;
+  text-align:left;
+  font-size:13px;
 }
 
 .iconoAccion{
@@ -134,7 +136,7 @@ button{ cursor:pointer; }
 }
 
 .menuAcciones{
-  margin-top:8px;
+  margin-top:6px;
   display:none;
 }
 
@@ -142,16 +144,68 @@ button{ cursor:pointer; }
   background:none;
   border:none;
   color:white;
-  font-size:18px;
+  font-size:16px;
   cursor:pointer;
-  margin-right:10px;
+  margin-right:8px;
 }
 
+/* ================= RESPONSIVE CELULAR ================= */
+
 @media (max-width:600px){
+
+  body{
+    padding:20px 12px;
+  }
+
+  .container{
+    padding:20px 15px;
+  }
+
+  h1{
+    font-size:26px;
+  }
+
+  select{
+    width:100%;
+    max-width:260px;
+    font-size:16px;
+  }
+
+  .timeContainer{
+    flex-direction:column;
+    padding:15px;
+  }
+
+  .divider{
+    width:100%;
+    height:2px;
+    margin:12px 0;
+  }
+
+  .timeBox{
+    width:100%;
+    padding:10px 0;
+  }
+
+  .timeBox input{
+    width:100%;
+    font-size:16px;
+  }
+
+  .result{
+    font-size:20px;
+  }
+
+  .factor{
+    font-size:18px;
+    width:100%;
+  }
+
   .panelAdmin{
     width:100%;
     left:-100%;
   }
+
   .panelAdmin.activo{
     left:0;
   }
@@ -208,6 +262,12 @@ button{ cursor:pointer; }
 
   <button onclick="mostrarFormularioNuevo()">➕ Agregar medidor</button>
 
+  <hr>
+
+  <button onclick="exportarBackup()">📤 Exportar Backup</button>
+  <button onclick="importarBackup()">📥 Importar Backup</button>
+  <input type="file" id="archivoBackup" accept=".json" style="display:none">
+
   <div id="formularioMedidor" style="display:none; margin-top:20px;">
     <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
     <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
@@ -232,7 +292,6 @@ button{ cursor:pointer; }
 
 const PASSWORD_ADMIN = "final";
 let adminAutorizado = false;
-
 let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
 let editandoClave = null;
 
@@ -307,170 +366,70 @@ function calcular(){
     (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
 }
 
-function abrirPanel(){
-  document.getElementById("panelAdmin").classList.add("activo");
-  document.getElementById("overlay").classList.add("activo");
-  actualizarLista();
-}
+/* ================= BACKUP ================= */
 
-function cerrarPanel(){
-  document.getElementById("panelAdmin").classList.remove("activo");
-  document.getElementById("overlay").classList.remove("activo");
-  adminAutorizado = false;
-}
-
-function actualizarLista(){
-  const cont = document.getElementById("listaMedidores");
-  cont.innerHTML = "";
-
-  for(let key in medidores){
-    const med = medidores[key];
-
-    const div = document.createElement("div");
-    div.className = "medItem";
-
-    div.innerHTML = `
-      <div>
-        <strong>${med.nombre}</strong><br>
-        Instrumento: ${med.instrumento}
-        <div class="menuAcciones" id="menu_${key}">
-          <button onclick="editarMedidor('${key}')">✏️</button>
-          <button onclick="eliminarMedidor('${key}')">🗑️</button>
-        </div>
-      </div>
-      <div class="iconoAccion" onclick="toggleMenu('${key}')">⋮</div>
-    `;
-
-    cont.appendChild(div);
-  }
-}
-
-function toggleMenu(clave){
-  const menu = document.getElementById("menu_"+clave);
-  menu.style.display = (menu.style.display === "block") ? "none" : "block";
-}
-
-function mostrarFormularioNuevo(){
-  if(!adminAutorizado){
-    alert("Primero debe editar un medidor para autenticarse.");
-    return;
-  }
-
-  editandoClave = null;
-  document.getElementById("formularioMedidor").style.display = "block";
-}
-
-function editarMedidor(clave){
+function exportarBackup(){
 
   if(!adminAutorizado){
-
     const pass = prompt("Ingrese contraseña de administración:");
-
     if(pass !== PASSWORD_ADMIN){
       alert("Contraseña incorrecta");
       return;
     }
-
     adminAutorizado = true;
   }
 
-  editandoClave = clave;
-  const med = medidores[clave];
+  const dataStr = JSON.stringify(medidores, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
 
-  document.getElementById("formularioMedidor").style.display = "block";
-  document.getElementById("nuevoNombre").value = med.nombre;
-  document.getElementById("nuevoInstrumento").value = med.instrumento;
-  document.getElementById("nuevaUnidad").value = med.unidad;
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = "backup_medidores.json";
+  enlace.click();
 }
 
-function cerrarFormulario(){
-  document.getElementById("formularioMedidor").style.display = "none";
-}
+function importarBackup(){
 
-function guardarMedidor(){
-
-  const nombre = document.getElementById("nuevoNombre").value.trim();
-  const instrumento = document.getElementById("nuevoInstrumento").value.trim();
-  const unidad = document.getElementById("nuevaUnidad").value;
-  const archivo = document.getElementById("archivoTabla").files[0];
-
-  if(!nombre) return alert("Nombre requerido");
-
-  let tabla = editandoClave ? medidores[editandoClave].tabla : [];
-
-  if(archivo){
-
-    const reader = new FileReader();
-
-    reader.onload = function(e){
-
-      const texto = e.target.result;
-      const lineas = texto.split("\n").slice(1);
-      tabla = [];
-
-      lineas.forEach(linea => {
-
-        if(!linea.trim()) return;
-
-        let separador = linea.includes(";") ? ";" : ",";
-        let partes = linea.split(separador);
-
-        if(partes.length < 2) return;
-
-        let caudalStr = partes[0].trim().replace(",", ".");
-        let errorStr  = partes[1].trim().replace(",", ".");
-
-        let caudal = parseFloat(caudalStr);
-        let error  = parseFloat(errorStr);
-
-        if(!isNaN(caudal) && !isNaN(error)){
-          tabla.push({ caudal, error });
-        }
-
-      });
-
-      finalizarGuardado(nombre,instrumento,unidad,tabla);
-    };
-
-    reader.readAsText(archivo);
-
-  }else{
-    finalizarGuardado(nombre,instrumento,unidad,tabla);
-  }
-}
-
-function finalizarGuardado(nombre,instrumento,unidad,tabla){
-
-  const clave = editandoClave || "med_"+Date.now();
-
-  medidores[clave] = { nombre, instrumento, unidad, tabla };
-
-  localStorage.setItem("medidoresData", JSON.stringify(medidores));
-
-  cerrarFormulario();
-  actualizarSelector();
-  actualizarLista();
-}
-
-function eliminarMedidor(clave){
   if(!adminAutorizado){
-    alert("Debe autenticarse primero editando un medidor.");
-    return;
+    const pass = prompt("Ingrese contraseña de administración:");
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+    adminAutorizado = true;
   }
 
-  if(!confirm("¿Eliminar medidor?")) return;
-
-  delete medidores[clave];
-  localStorage.setItem("medidoresData", JSON.stringify(medidores));
-  actualizarSelector();
-  actualizarLista();
+  document.getElementById("archivoBackup").click();
 }
 
-minEl.addEventListener("input", calcular);
-segEl.addEventListener("input", calcular);
-medidorEl.addEventListener("change", calcular);
+document.getElementById("archivoBackup").addEventListener("change", function(e){
 
-calcular();
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(event){
+
+    try{
+      const datos = JSON.parse(event.target.result);
+
+      medidores = datos;
+      localStorage.setItem("medidoresData", JSON.stringify(medidores));
+
+      actualizarSelector();
+      actualizarLista();
+      calcular();
+
+      alert("Backup importado correctamente");
+
+    }catch(error){
+      alert("Archivo inválido");
+    }
+  };
+
+  reader.readAsText(file);
+});
 
 </script>
 </body>
