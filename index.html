@@ -242,264 +242,110 @@ button{ cursor:pointer; }
 
 </div>
 
-<script>
+<script type="module">
 
-let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { 
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDr1J5UGwJfFNG0A5Ip3verQOXtnqA6i10",
+  authDomain: "ecotermo-medidor.firebaseapp.com",
+  projectId: "ecotermo-medidor",
+  storageBucket: "ecotermo-medidor.firebasestorage.app",
+  messagingSenderId: "863829552907",
+  appId: "1:863829552907:web:d7489de48f0f047160bc0e",
+  measurementId: "G-SQ145FV93F"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let medidores = {};
 let editandoClave = null;
-let adminAutorizado = false;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
-const btnAgregar = document.getElementById("btnAgregar");
-const zonaConfig = document.getElementById("zonaConfig");
 
-function actualizarSelector(){
-  medidorEl.innerHTML = "";
-  for(let key in medidores){
-    const opt = document.createElement("option");
-    opt.value = key;
-    opt.textContent = medidores[key].nombre;
-    medidorEl.appendChild(opt);
-  }
-}
-actualizarSelector();
+const colRef = collection(db, "medidores");
 
-function pedirPassword(){
-  const pass = prompt("Ingrese contraseña:");
-  if(pass === "final"){
-    adminAutorizado = true;
-    btnAgregar.style.display = "block";
-    zonaConfig.style.display = "block";
-    alert("Modo configuración activado");
-    actualizarLista();
-  }else{
-    alert("Contraseña incorrecta");
-  }
-}
+onSnapshot(colRef, (snapshot)=>{
+  medidores = {};
+  snapshot.forEach(docSnap=>{
+    medidores[docSnap.id] = docSnap.data();
+  });
+  actualizarSelector();
+});
 
-function exportarDatos(){
-  const dataStr = JSON.stringify(medidores, null, 2);
-  const blob = new Blob([dataStr], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "backup_medidores.json";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importarDatos(event){
-  const file = event.target.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const datos = JSON.parse(e.target.result);
-      medidores = datos;
-      localStorage.setItem("medidoresData", JSON.stringify(medidores));
-      actualizarSelector();
-      actualizarLista();
-      alert("Datos importados correctamente");
-    }catch(err){
-      alert("Archivo inválido");
-    }
-  };
-  reader.readAsText(file);
-}
-
-function abrirPanel(){
-  document.getElementById("panelAdmin").classList.add("activo");
-  document.getElementById("overlay").classList.add("activo");
-  actualizarLista();
-}
-
-function cerrarPanel(){
-  document.getElementById("panelAdmin").classList.remove("activo");
-  document.getElementById("overlay").classList.remove("activo");
-}
-
-function actualizarLista(){
-  const cont = document.getElementById("listaMedidores");
-  cont.innerHTML = "";
-
-  for(let key in medidores){
-    const med = medidores[key];
-    const div = document.createElement("div");
-    div.className = "medItem";
-
-    let acciones = "";
-    if(adminAutorizado){
-      acciones = `
-        <div>
-          <div class="menuAcciones" id="menu_${key}">
-            <button onclick="editarMedidor('${key}')">✏️</button>
-            <button onclick="eliminarMedidor('${key}')">🗑️</button>
-          </div>
-        </div>
-        <div class="iconoAccion" onclick="toggleMenu('${key}')">⋮</div>
-      `;
-    }
-
-    div.innerHTML = `
-      <div>
-        <strong>${med.nombre}</strong><br>
-        Instrumento: ${med.instrumento}
-      </div>
-      ${acciones}
-    `;
-    cont.appendChild(div);
-  }
-}
-
-function toggleMenu(clave){
-  const menu = document.getElementById("menu_"+clave);
-  if(menu){
-    menu.style.display = (menu.style.display === "block") ? "none" : "block";
-  }
-}
-
-function mostrarFormularioNuevo(){
-  if(!adminAutorizado) return;
-  editandoClave = null;
-  document.getElementById("formularioMedidor").style.display = "block";
-}
-
-function cerrarFormulario(){
-  document.getElementById("formularioMedidor").style.display = "none";
-}
-
-function editarMedidor(clave){
-  if(!adminAutorizado) return;
-  editandoClave = clave;
-  const med = medidores[clave];
-  document.getElementById("formularioMedidor").style.display = "block";
-  document.getElementById("nuevoNombre").value = med.nombre;
-  document.getElementById("nuevoInstrumento").value = med.instrumento;
-  document.getElementById("nuevaUnidad").value = med.unidad;
-}
-
-function guardarMedidor(){
-
-  if(!adminAutorizado) return;
+window.guardarMedidor = async function(){
 
   const nombre = document.getElementById("nuevoNombre").value.trim();
   const instrumento = document.getElementById("nuevoInstrumento").value.trim();
   const unidad = document.getElementById("nuevaUnidad").value;
-  const archivo = document.getElementById("archivoTabla").files[0];
 
   if(!nombre) return alert("Nombre requerido");
 
-  let tabla = editandoClave ? medidores[editandoClave].tabla : [];
-
-  if(archivo){
-    const reader = new FileReader();
-    reader.onload = function(e){
-      const texto = e.target.result;
-      const lineas = texto.split("\n").slice(1);
-      tabla = [];
-
-      lineas.forEach(linea=>{
-        if(!linea.trim()) return;
-        let separador = linea.includes(";") ? ";" : ",";
-        let partes = linea.split(separador);
-        if(partes.length < 2) return;
-
-        let caudal = parseFloat(partes[0].trim().replace(",", "."));
-        let error  = parseFloat(partes[1].trim().replace(",", "."));
-
-        if(!isNaN(caudal) && !isNaN(error)){
-          tabla.push({caudal,error});
-        }
-      });
-
-      finalizarGuardado(nombre,instrumento,unidad,tabla);
-    };
-    reader.readAsText(archivo);
-  }else{
-    finalizarGuardado(nombre,instrumento,unidad,tabla);
-  }
-}
-
-function finalizarGuardado(nombre,instrumento,unidad,tabla){
   const clave = editandoClave || "med_"+Date.now();
-  medidores[clave] = {nombre,instrumento,unidad,tabla};
-  localStorage.setItem("medidoresData", JSON.stringify(medidores));
-  cerrarFormulario();
-  actualizarSelector();
-  actualizarLista();
-}
 
-function eliminarMedidor(clave){
-  if(!adminAutorizado) return;
+  await setDoc(doc(db, "medidores", clave), {
+    nombre,
+    instrumento,
+    unidad,
+    tabla: []
+  });
+
+  document.getElementById("formularioMedidor").style.display = "none";
+};
+
+window.eliminarMedidor = async function(clave){
   if(!confirm("¿Eliminar medidor?")) return;
-  delete medidores[clave];
-  localStorage.setItem("medidoresData", JSON.stringify(medidores));
-  actualizarSelector();
-  actualizarLista();
-}
+  await deleteDoc(doc(db, "medidores", clave));
+};
 
-minEl.addEventListener("input", calcular);
-segEl.addEventListener("input", calcular);
-medidorEl.addEventListener("change", calcular);
+function actualizarSelector(){
+  medidorEl.innerHTML = "";
+
+  Object.keys(medidores).forEach(key=>{
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = medidores[key].nombre;
+    medidorEl.appendChild(opt);
+  });
+}
 
 function calcular(){
+
   const medidor = medidores[medidorEl.value];
-  if(!medidor || !medidor.tabla || medidor.tabla.length === 0) return;
+  if(!medidor) return;
 
   let min = Number(minEl.value) || 0;
   let seg = Number(segEl.value) || 0;
 
-  if(seg >= 60){
-    min += Math.floor(seg / 60);
-    seg = seg % 60;
-  }
-
-  const total = (min * 60) + seg;
-  document.getElementById("totalSegundos").textContent =
-    "Total: " + total.toLocaleString("es-AR") + " segundos";
-
+  const total = (min*60)+seg;
   if(total <= 0) return;
 
-  const dm3_h = (3600 * 100) / total;
-  const m3_h  = dm3_h / 1000;
+  const dm3_h = (3600*100)/total;
+  const m3_h = dm3_h/1000;
 
   document.getElementById("consumo_dm3").textContent =
     dm3_h.toLocaleString("es-AR",{maximumFractionDigits:2}) + " dm³/h";
 
   document.getElementById("consumo_m3").textContent =
     m3_h.toLocaleString("es-AR",{maximumFractionDigits:4}) + " m³/h";
-
-  const tabla = medidor.tabla;
-  const valorComparacion = medidor.unidad === "dm3" ? dm3_h : m3_h;
-
-  let masCercano = tabla[0];
-  let difMin = Math.abs(valorComparacion - masCercano.caudal);
-
-  for(let i=1; i<tabla.length; i++){
-    const dif = Math.abs(valorComparacion - tabla[i].caudal);
-    if(dif < difMin){
-      difMin = dif;
-      masCercano = tabla[i];
-    }
-  }
-
-  const err = masCercano.error;
-  const factorEl = document.getElementById("factor");
-
-  factorEl.className = (err < 0) ? "factor neg" : "factor pos";
-  factorEl.textContent =
-    "Factor de corrección: " +
-    err.toLocaleString("es-AR",{minimumFractionDigits:2}) + " %";
-
-  document.getElementById("tablaUsada").textContent =
-    "Tabla usada: " + masCercano.caudal +
-    (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
 }
 
-calcular();
+minEl.addEventListener("input", calcular);
+segEl.addEventListener("input", calcular);
+medidorEl.addEventListener("change", calcular);
 
 </script>
+
 </body>
 </html>
