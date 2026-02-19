@@ -107,9 +107,6 @@ body{
     width:100%;
     left:-100%;
   }
-  .panelAdmin.activo{
-    left:0;
-  }
 }
 </style>
 </head>
@@ -150,10 +147,8 @@ body{
 <h3>Administrar medidores</h3>
 
 <button onclick="agregarMedidorDemo()">Agregar demo</button>
-<br><br>
-<button onclick="exportarBackup()">📤 Exportar Backup</button>
-<br><br>
-<button onclick="importarBackup()">📥 Importar Backup</button>
+<button onclick="exportarBackup()">Exportar Backup</button>
+<button onclick="importarBackup()">Importar Backup</button>
 
 <input type="file" id="archivoBackup" accept=".json" style="display:none">
 
@@ -224,48 +219,25 @@ function agregarMedidorDemo(){
 }
 
 function exportarBackup(){
-
-  const dataStr = JSON.stringify(medidores, null, 2);
-  const blob = new Blob([dataStr], { type:"application/json" });
-
-  const url = URL.createObjectURL(blob);
-  const enlace = document.createElement("a");
-  enlace.href = url;
-  enlace.download = "backup_medidores.json";
-
-  document.body.appendChild(enlace);
-  enlace.click();
-  document.body.removeChild(enlace);
-
-  URL.revokeObjectURL(url);
+  const blob = new Blob([JSON.stringify(medidores)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download="backup_medidores.json";
+  a.click();
 }
 
 function importarBackup(){
-  const input = document.getElementById("archivoBackup");
-  input.value = "";
-  input.click();
+  document.getElementById("archivoBackup").click();
 }
 
 document.getElementById("archivoBackup").addEventListener("change",function(e){
-
-  const file = e.target.files[0];
-  if(!file) return;
-
   const reader = new FileReader();
-
   reader.onload = function(ev){
-    try{
-      medidores = JSON.parse(ev.target.result);
-      localStorage.setItem("medidoresData",JSON.stringify(medidores));
-      actualizarSelector();
-      calcular();
-      alert("Backup importado correctamente");
-    }catch{
-      alert("Archivo inválido");
-    }
-  };
-
-  reader.readAsText(file);
+    medidores = JSON.parse(ev.target.result);
+    localStorage.setItem("medidoresData",JSON.stringify(medidores));
+    actualizarSelector();
+  }
+  reader.readAsText(e.target.files[0]);
 });
 
 </script>
