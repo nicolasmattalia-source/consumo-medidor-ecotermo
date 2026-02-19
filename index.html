@@ -177,6 +177,7 @@ select, input, button{
         <option value="dm3">dm³/h</option>
         <option value="m3">m³/h</option>
       </select>
+      <input type="file" id="archivoTabla" accept=".csv">
       <button onclick="guardarMedidor()">Guardar</button>
     </div>
 
@@ -194,14 +195,8 @@ select, input, button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getFirestore,
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -224,8 +219,6 @@ const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
 const factorEl = document.getElementById("factor");
 
-/* SINCRONIZACIÓN */
-
 onSnapshot(colRef, (snapshot)=>{
   medidores = {};
   snapshot.forEach(docSnap=>{
@@ -235,23 +228,20 @@ onSnapshot(colRef, (snapshot)=>{
   actualizarLista();
 });
 
-/* UI y CRUD igual que antes */
-
 window.abrirPanel = function(){
-  document.getElementById("panelAdmin").classList.add("activo");
-  document.getElementById("overlay").classList.add("activo");
+  panelAdmin.classList.add("activo");
+  overlay.classList.add("activo");
 }
 
 window.cerrarPanel = function(){
-  document.getElementById("panelAdmin").classList.remove("activo");
-  document.getElementById("overlay").classList.remove("activo");
+  panelAdmin.classList.remove("activo");
+  overlay.classList.remove("activo");
 }
 
 window.pedirPassword = function(){
-  const pass = prompt("Ingrese contraseña:");
-  if(pass === "final"){
+  if(prompt("Ingrese contraseña:") === "final"){
     adminAutorizado = true;
-    document.getElementById("zonaConfig").style.display = "block";
+    zonaConfig.style.display = "block";
     actualizarLista();
   }
 }
@@ -267,8 +257,7 @@ function actualizarSelector(){
 }
 
 function actualizarLista(){
-  const cont=document.getElementById("listaMedidores");
-  cont.innerHTML="";
+  listaMedidores.innerHTML="";
   Object.keys(medidores).forEach(key=>{
     const med=medidores[key];
     const div=document.createElement("div");
@@ -282,104 +271,107 @@ function actualizarLista(){
         </div>
       ` : ""}
     `;
-    cont.appendChild(div);
+    listaMedidores.appendChild(div);
   });
 }
 
 window.mostrarFormulario = function(){
-  editandoClave = null;
-  document.getElementById("nuevoNombre").value="";
-  document.getElementById("nuevoInstrumento").value="";
-  document.getElementById("formMedidor").style.display="block";
+  editandoClave=null;
+  nuevoNombre.value="";
+  nuevoInstrumento.value="";
+  archivoTabla.value="";
+  formMedidor.style.display="block";
 }
 
 window.editarMedidor = function(clave){
-  const med = medidores[clave];
-  editandoClave = clave;
-  document.getElementById("nuevoNombre").value=med.nombre;
-  document.getElementById("nuevoInstrumento").value=med.instrumento;
-  document.getElementById("nuevaUnidad").value=med.unidad;
-  document.getElementById("formMedidor").style.display="block";
+  editandoClave=clave;
+  const med=medidores[clave];
+  nuevoNombre.value=med.nombre;
+  nuevoInstrumento.value=med.instrumento;
+  nuevaUnidad.value=med.unidad;
+  archivoTabla.value="";
+  formMedidor.style.display="block";
 }
 
 window.guardarMedidor = async function(){
-  const nombre=document.getElementById("nuevoNombre").value.trim();
-  const instrumento=document.getElementById("nuevoInstrumento").value.trim();
-  const unidad=document.getElementById("nuevaUnidad").value;
+
+  const nombre=nuevoNombre.value.trim();
+  const instrumento=nuevoInstrumento.value.trim();
+  const unidad=nuevaUnidad.value;
+  const archivo=archivoTabla.files[0];
 
   if(!nombre) return;
+
+  let tabla = medidores[editandoClave]?.tabla || [];
+
+  if(archivo){
+    const texto = await archivo.text();
+    const lineas = texto.split("\n").slice(1);
+    tabla = [];
+
+    lineas.forEach(linea=>{
+      if(!linea.trim()) return;
+      const partes=linea.includes(";")?linea.split(";"):linea.split(",");
+      const caudal=parseFloat(partes[0].replace(",","."));
+      const error=parseFloat(partes[1].replace(",","."));
+      if(!isNaN(caudal)&&!isNaN(error)){
+        tabla.push({caudal,error});
+      }
+    });
+  }
 
   const clave = editandoClave || "med_"+Date.now();
 
   await setDoc(doc(db,"medidores",clave),{
-    nombre,
-    instrumento,
-    unidad,
-    tabla: medidores[clave]?.tabla || []
+    nombre,instrumento,unidad,tabla
   });
 
   editandoClave=null;
-  document.getElementById("formMedidor").style.display="none";
+  formMedidor.style.display="none";
 }
 
-/* ===== CÁLCULO CON FACTOR ===== */
+window.eliminarMedidor = async function(clave){
+  await deleteDoc(doc(db,"medidores",clave));
+}
+
+/* ===== CÁLCULO ===== */
 
 function calcular(){
 
   let min=Number(minEl.value)||0;
   let seg=Number(segEl.value)||0;
 
-  if(seg>=60){
-    min+=Math.floor(seg/60);
-    seg%=60;
-  }
+  if(seg>=60){ min+=Math.floor(seg/60); seg%=60; }
 
   const total=(min*60)+seg;
-
-  document.getElementById("totalSegundos").textContent=
-    "Total: "+total+" segundos";
-
+  totalSegundos.textContent="Total: "+total+" segundos";
   if(total<=0) return;
 
   const dm3_h=(3600*100)/total;
   const m3_h=dm3_h/1000;
 
-  document.getElementById("consumo_dm3").textContent=
-    dm3_h.toFixed(2)+" dm³/h";
+  consumo_dm3.textContent=dm3_h.toFixed(2)+" dm³/h";
+  consumo_m3.textContent=m3_h.toFixed(4)+" m³/h";
 
-  document.getElementById("consumo_m3").textContent=
-    m3_h.toFixed(4)+" m³/h";
-
-  const clave = medidorEl.value;
-  const med = medidores[clave];
-
+  const med=medidores[medidorEl.value];
   if(!med || !med.tabla || med.tabla.length===0){
     factorEl.textContent="Factor de corrección: —";
     factorEl.style.color="white";
     return;
   }
 
-  const valor = med.unidad==="dm3" ? dm3_h : m3_h;
+  const valor = med.unidad==="dm3"?dm3_h:m3_h;
 
-  let masCercano = med.tabla[0];
-  let difMin = Math.abs(valor - masCercano.caudal);
+  let masCercano=med.tabla[0];
+  let difMin=Math.abs(valor-masCercano.caudal);
 
   for(let i=1;i<med.tabla.length;i++){
-    const dif = Math.abs(valor - med.tabla[i].caudal);
-    if(dif < difMin){
-      difMin = dif;
-      masCercano = med.tabla[i];
-    }
+    const dif=Math.abs(valor-med.tabla[i].caudal);
+    if(dif<difMin){ difMin=dif; masCercano=med.tabla[i]; }
   }
 
-  factorEl.textContent =
-    "Factor de corrección: " + masCercano.error.toFixed(2) + " %";
-
-  if(masCercano.error >= 0){
-    factorEl.style.color = "#22c55e";
-  } else {
-    factorEl.style.color = "#ef4444";
-  }
+  factorEl.textContent="Factor de corrección: "+masCercano.error.toFixed(2)+" %";
+  factorEl.style.color = masCercano.error>=0 ? "#22c55e" : "#ef4444";
 }
 
 minEl.addEventListener("input",calcular);
@@ -387,8 +379,6 @@ segEl.addEventListener("input",calcular);
 medidorEl.addEventListener("change",calcular);
 
 });
-
 </script>
-
 </body>
 </html>
