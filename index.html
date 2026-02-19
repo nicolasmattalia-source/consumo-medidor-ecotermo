@@ -228,6 +228,21 @@ button{ cursor:pointer; }
   <button onclick="importarBackup()">📥 Importar Backup</button>
   <input type="file" id="archivoBackup" accept=".json" style="display:none">
 
+  <hr>
+
+  <h4>Sincronización en la nube</h4>
+  <input type="url" id="cloudUrl" placeholder="https://tu-api.com/medidores" style="width:100%; max-width:320px;">
+  <input type="password" id="cloudToken" placeholder="Token (opcional)" style="width:100%; max-width:320px;">
+  <div>
+    <label style="font-size:13px;">
+      <input type="checkbox" id="cloudAutoSync"> Auto-sync cada 60s
+    </label>
+  </div>
+  <button onclick="guardarConfigNube()">💾 Guardar config nube</button>
+  <button onclick="syncSubirNube()">☁️ Subir ahora</button>
+  <button onclick="syncBajarNube()">☁️ Bajar ahora</button>
+  <div id="cloudStatus" style="font-size:12px; opacity:0.8; margin-top:6px;">Nube: sin configurar</div>
+
   <div id="formularioMedidor" style="display:none; margin-top:20px;">
 
     <div id="infoArchivoActual" style="font-size:13px; margin-bottom:10px; opacity:0.8;"></div>
@@ -263,6 +278,18 @@ let editandoClave = null;
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+const cloudUrlEl = document.getElementById("cloudUrl");
+const cloudTokenEl = document.getElementById("cloudToken");
+const cloudAutoSyncEl = document.getElementById("cloudAutoSync");
+const cloudStatusEl = document.getElementById("cloudStatus");
+
+let medidoresMeta = JSON.parse(localStorage.getItem("medidoresMeta")) || { updatedAt: 0 };
+let cloudConfig = JSON.parse(localStorage.getItem("cloudConfig")) || {
+  url: "",
+  token: "",
+  autoSync: false
+};
+let autoSyncTimer = null;
 
 // === PANEL ===
 
@@ -435,6 +462,365 @@ function editarMedidor(clave){
 
 function cerrarFormulario(){
   document.getElementById("formularioMedidor").style.display = "none";
+  document.getElementById("nuevoNombre").value = "";
+  document.getElementById("nuevoInstrumento").value = "";
+  document.getElementById("nuevaUnidad").value = "dm3";
+  document.getElementById("archivoTabla").value = "";
+  document.getElementById("infoArchivoActual").innerHTML = "";
+}
+
+// === UTILIDADES DE DATOS ===
+
+function guardarEnStorage(){
+  medidoresMeta.updatedAt = Date.now();
+  localStorage.setItem("medidoresData", JSON.stringify(medidores));
+  localStorage.setItem("medidoresMeta", JSON.stringify(medidoresMeta));
+
+  if(cloudConfig.autoSync){
+    syncSubirNube(true);
+  }
+}
+
+function setCloudStatus(msg){
+  cloudStatusEl.textContent = "Nube: " + msg;
+}
+
+function aplicarConfigNubeUI(){
+  cloudUrlEl.value = cloudConfig.url || "";
+  cloudTokenEl.value = cloudConfig.token || "";
+  cloudAutoSyncEl.checked = Boolean(cloudConfig.autoSync);
+}
+
+function guardarConfigNube(){
+  cloudConfig = {
+    url: cloudUrlEl.value.trim(),
+    token: cloudTokenEl.value.trim(),
+    autoSync: cloudAutoSyncEl.checked
+  };
+
+  localStorage.setItem("cloudConfig", JSON.stringify(cloudConfig));
+  programarAutoSync();
+
+  if(!cloudConfig.url){
+    setCloudStatus("config guardada, falta URL");
+    return;
+  }
+
+  setCloudStatus("config guardada");
+}
+
+function cloudHeaders(){
+  const headers = { "Content-Type": "application/json" };
+  if(cloudConfig.token){
+    headers.Authorization = `Bearer ${cloudConfig.token}`;
+  }
+  return headers;
+}
+
+async function syncSubirNube(silencioso = false){
+  if(!cloudConfig.url){
+    if(!silencioso) setCloudStatus("sin URL configurada");
+    return;
+  }
+
+  const payload = {
+    version: 1,
+    updatedAt: medidoresMeta.updatedAt || Date.now(),
+    medidores
+  };
+
+  try{
+    const resp = await fetch(cloudConfig.url, {
+      method: "PUT",
+      headers: cloudHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    setCloudStatus("subido OK " + new Date().toLocaleTimeString("es-AR"));
+  } catch(err){
+    if(!silencioso) setCloudStatus("error al subir: " + err.message);
+  }
+}
+
+async function syncBajarNube(silencioso = false){
+  if(!cloudConfig.url){
+    if(!silencioso) setCloudStatus("sin URL configurada");
+    return;
+  }
+
+  try{
+    const resp = await fetch(cloudConfig.url, {
+      method: "GET",
+      headers: cloudHeaders()
+    });
+
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+
+    const data = await resp.json();
+    const remotos = data.medidores || data;
+    const remotoUpdatedAt = Number(data.updatedAt) || 0;
+
+    if(typeof remotos !== "object" || Array.isArray(remotos)){
+      throw new Error("formato inválido");
+    }
+
+    const localUpdatedAt = Number(medidoresMeta.updatedAt) || 0;
+    if(remotoUpdatedAt < localUpdatedAt){
+      if(!silencioso) setCloudStatus("descarga omitida (local más nuevo)");
+      return;
+    }
+
+    medidores = remotos;
+    medidoresMeta.updatedAt = remotoUpdatedAt || Date.now();
+    localStorage.setItem("medidoresData", JSON.stringify(medidores));
+    localStorage.setItem("medidoresMeta", JSON.stringify(medidoresMeta));
+
+    actualizarSelector();
+    actualizarLista();
+    calcular();
+    setCloudStatus("bajado OK " + new Date().toLocaleTimeString("es-AR"));
+  } catch(err){
+    if(!silencioso) setCloudStatus("error al bajar: " + err.message);
+  }
+}
+
+function programarAutoSync(){
+  if(autoSyncTimer){
+    clearInterval(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+
+  if(!cloudConfig.autoSync || !cloudConfig.url) return;
+
+  autoSyncTimer = setInterval(() => {
+    syncBajarNube(true);
+  }, 60000);
+}
+
+function generarClave(nombre){
+  const base = (nombre || "medidor")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "medidor";
+
+  let clave = base;
+  let i = 1;
+  while(medidores[clave] && clave !== editandoClave){
+    clave = `${base}_${i}`;
+    i++;
+  }
+  return clave;
+}
+
+function parseNumeroFlexible(valor){
+  if(valor == null) return NaN;
+
+  let txt = String(valor).trim();
+  if(!txt) return NaN;
+
+  txt = txt.replace(/\s/g, "");
+
+  const tienePunto = txt.includes(".");
+  const tieneComa = txt.includes(",");
+
+  if(tienePunto && tieneComa){
+    if(txt.lastIndexOf(",") > txt.lastIndexOf(".")){
+      txt = txt.replace(/\./g, "").replace(",", ".");
+    } else {
+      txt = txt.replace(/,/g, "");
+    }
+  } else if(tieneComa){
+    txt = txt.replace(",", ".");
+  }
+
+  return Number(txt);
+}
+
+function parsearCSV(texto){
+  const lineas = texto
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  const filas = [];
+
+  for(let i = 0; i < lineas.length; i++){
+    const linea = lineas[i];
+
+    let cols;
+    if(linea.includes(";")){
+      cols = linea.split(";");
+    } else if(linea.includes("	")){
+      cols = linea.split("	");
+    } else {
+      cols = linea.split(",");
+    }
+
+    cols = cols.map(c => c.trim());
+    if(cols.length < 2) continue;
+
+    const caudal = parseNumeroFlexible(cols[0]);
+    const error = parseNumeroFlexible(cols[1]);
+
+    if(Number.isFinite(caudal) && Number.isFinite(error)){
+      filas.push({ caudal, error });
+    }
+  }
+
+  return filas;
+}
+
+
+// === CRUD MEDIDORES ===
+
+function guardarMedidor(){
+  const nombre = document.getElementById("nuevoNombre").value.trim();
+  const instrumento = document.getElementById("nuevoInstrumento").value.trim();
+  const unidad = document.getElementById("nuevaUnidad").value;
+  const archivoInput = document.getElementById("archivoTabla");
+  const archivo = archivoInput.files[0];
+
+  if(!nombre || !instrumento){
+    alert("Completá nombre e instrumento.");
+    return;
+  }
+
+  const claveFinal = editandoClave || generarClave(nombre);
+  const medidorPrevio = medidores[editandoClave] || null;
+
+  const finalizarGuardado = (tabla, nombreArchivo = null) => {
+    if(!Array.isArray(tabla) || tabla.length === 0){
+      alert("La tabla debe tener al menos una fila válida: caudal,error");
+      return;
+    }
+
+    const medidorNuevo = {
+      nombre,
+      instrumento,
+      unidad,
+      tabla,
+      archivo: nombreArchivo || medidorPrevio?.archivo || "Manual",
+      fechaModificacion: new Date().toLocaleString("es-AR")
+    };
+
+    if(editandoClave && claveFinal !== editandoClave){
+      delete medidores[editandoClave];
+    }
+
+    medidores[claveFinal] = medidorNuevo;
+    guardarEnStorage();
+    actualizarSelector();
+    actualizarLista();
+    medidorEl.value = claveFinal;
+    cerrarFormulario();
+    calcular();
+  };
+
+  if(archivo){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const tabla = parsearCSV(e.target.result || "");
+      finalizarGuardado(tabla, archivo.name);
+    };
+    reader.onerror = () => alert("No se pudo leer el archivo CSV.");
+    reader.readAsText(archivo);
+    return;
+  }
+
+  if(medidorPrevio){
+    finalizarGuardado(medidorPrevio.tabla);
+  } else {
+    alert("Seleccioná un archivo CSV para cargar la tabla del nuevo medidor.");
+  }
+}
+
+function eliminarMedidor(clave){
+  if(!adminAutorizado){
+    alert("Debés ingresar con contraseña para eliminar.");
+    return;
+  }
+
+  const med = medidores[clave];
+  if(!med) return;
+
+  if(!confirm(`¿Eliminar el medidor "${med.nombre}"?`)) return;
+
+  delete medidores[clave];
+  guardarEnStorage();
+  actualizarSelector();
+  actualizarLista();
+  calcular();
+}
+
+// === IMPORTAR / EXPORTAR ===
+
+function exportarBackup(){
+  const payload = {
+    version: 1,
+    exportadoEn: new Date().toISOString(),
+    medidores
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup_medidores_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importarBackup(){
+  if(!adminAutorizado){
+    const pass = prompt("Ingrese contraseña de administración:");
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+    adminAutorizado = true;
+  }
+
+  const input = document.getElementById("archivoBackup");
+  input.value = "";
+  input.onchange = () => {
+    const file = input.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try{
+        const data = JSON.parse(e.target.result || "{}");
+        const nuevosMedidores = data.medidores || data;
+
+        if(typeof nuevosMedidores !== "object" || Array.isArray(nuevosMedidores)){
+          throw new Error("Formato inválido");
+        }
+
+        medidores = nuevosMedidores;
+        guardarEnStorage();
+        actualizarSelector();
+        actualizarLista();
+        calcular();
+        alert("Backup importado correctamente.");
+      } catch(err){
+        alert("No se pudo importar el archivo. Verificá que sea un JSON válido.");
+      }
+    };
+    reader.onerror = () => alert("No se pudo leer el backup.");
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+aplicarConfigNubeUI();
+programarAutoSync();
+if(cloudConfig.url){
+  setCloudStatus(cloudConfig.autoSync ? "auto-sync activo" : "configurada");
+} else {
+  setCloudStatus("sin configurar");
 }
 
 calcular();
