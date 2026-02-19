@@ -1,9 +1,9 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/index.html b/index.html
-index 516f89235d45e6143285483eba3e90d3f79ea3ec..4b00a07aefef112529c17ee716015c9bb1a35a5d 100644
+index 516f89235d45e6143285483eba3e90d3f79ea3ec..3acc4585090db9677f8999d91245d0b9d218c014 100644
 --- a/index.html
 +++ b/index.html
-@@ -1,444 +1,830 @@
+@@ -1,444 +1,835 @@
 -<!doctype html>
 -<html lang="es">
 -<head>
@@ -1068,10 +1068,12 @@ index 516f89235d45e6143285483eba3e90d3f79ea3ec..4b00a07aefef112529c17ee716015c9b
 +function parseNumeroFlexible(valor){
 +  if(valor == null) return NaN;
 +
-+  let txt = String(valor).trim();
-+  if(!txt) return NaN;
++  let txt = String(valor)
++    .trim()
++    .replace(/\s/g, "")
++    .replace(/[^0-9,\.\-+eE]/g, "");
 +
-+  txt = txt.replace(/\s/g, "");
++  if(!txt) return NaN;
 +
 +  const tienePunto = txt.includes(".");
 +  const tieneComa = txt.includes(",");
@@ -1089,6 +1091,20 @@ index 516f89235d45e6143285483eba3e90d3f79ea3ec..4b00a07aefef112529c17ee716015c9b
 +  return Number(txt);
 +}
 +
++function extraerColumnas(linea){
++  if(linea.includes(";")) return linea.split(";");
++  if(linea.includes("	")) return linea.split("	");
++
++  const candidatos = linea.split(",");
++  if(candidatos.length === 2) return candidatos;
++
++  // Fallback robusto: toma los primeros dos números que encuentre en la línea.
++  const nums = linea.match(/[+-]?\d+(?:[\.,]\d+)?(?:[eE][+-]?\d+)?/g) || [];
++  if(nums.length >= 2) return [nums[0], nums[1]];
++
++  return candidatos;
++}
++
 +function parsearCSV(texto){
 +  const lineas = texto
 +    .split(/\r?\n/)
@@ -1098,18 +1114,7 @@ index 516f89235d45e6143285483eba3e90d3f79ea3ec..4b00a07aefef112529c17ee716015c9b
 +  const filas = [];
 +
 +  for(let i = 0; i < lineas.length; i++){
-+    const linea = lineas[i];
-+
-+    let cols;
-+    if(linea.includes(";")){
-+      cols = linea.split(";");
-+    } else if(linea.includes("	")){
-+      cols = linea.split("	");
-+    } else {
-+      cols = linea.split(",");
-+    }
-+
-+    cols = cols.map(c => c.trim());
++    const cols = extraerColumnas(lineas[i]).map(c => c.trim());
 +    if(cols.length < 2) continue;
 +
 +    const caudal = parseNumeroFlexible(cols[0]);
