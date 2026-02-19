@@ -264,6 +264,58 @@ const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
 
+function guardarEnStorage(){
+  localStorage.setItem("medidoresData", JSON.stringify(medidores));
+}
+
+function normalizarTexto(texto){
+  return (texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function crearClave(nombre){
+  const base = normalizarTexto(nombre).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "medidor";
+  let clave = base;
+  let i = 1;
+  while(medidores[clave] && clave !== editandoClave){
+    i += 1;
+    clave = `${base}-${i}`;
+  }
+  return clave;
+}
+
+function parsearCSV(textoCSV){
+  const lineas = textoCSV.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if(lineas.length < 2){
+    throw new Error("El CSV debe tener encabezado y al menos una fila de datos");
+  }
+
+  const filas = [];
+
+  for(let i = 1; i < lineas.length; i++){
+    const columnas = lineas[i].split(/[;,]/).map(v => v.trim().replace(",", "."));
+    if(columnas.length < 2){
+      continue;
+    }
+
+    const caudal = Number(columnas[0]);
+    const error = Number(columnas[1]);
+
+    if(Number.isFinite(caudal) && Number.isFinite(error)){
+      filas.push({ caudal, error });
+    }
+  }
+
+  if(!filas.length){
+    throw new Error("No se encontraron filas válidas con formato: caudal,error");
+  }
+
+  return filas.sort((a, b) => a.caudal - b.caudal);
+}
+
 // === PANEL ===
 
 function abrirPanel(){
@@ -282,7 +334,20 @@ function cerrarPanel(){
 
 function actualizarSelector(){
   medidorEl.innerHTML = "";
-  for(let key in medidores){
+  const claves = Object.keys(medidores);
+
+  if(!claves.length){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Sin medidores cargados";
+    medidorEl.appendChild(opt);
+    medidorEl.disabled = true;
+    return;
+  }
+
+  medidorEl.disabled = false;
+
+  for(let key of claves){
     const opt = document.createElement("option");
     opt.value = key;
     opt.textContent = medidores[key].nombre;
@@ -296,7 +361,10 @@ actualizarSelector();
 function calcular(){
 
   const medidor = medidores[medidorEl.value];
-  if(!medidor) return;
+  if(!medidor || !Array.isArray(medidor.tabla) || medidor.tabla.length === 0){
+    document.getElementById("tablaUsada").textContent = "No hay tabla cargada para este medidor";
+    return;
+  }
 
   let min = Number(minEl.value) || 0;
   let seg = Number(segEl.value) || 0;
@@ -406,6 +474,10 @@ function mostrarFormularioNuevo(){
   editandoClave = null;
 
   document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("nuevoNombre").value = "";
+  document.getElementById("nuevoInstrumento").value = "";
+  document.getElementById("nuevaUnidad").value = "dm3";
+  document.getElementById("archivoTabla").value = "";
   document.getElementById("infoArchivoActual").innerHTML =
     "📎 Archivo actual: <strong>Nuevo medidor</strong>";
 }
@@ -428,14 +500,156 @@ function editarMedidor(clave){
   document.getElementById("nuevoNombre").value = med.nombre;
   document.getElementById("nuevoInstrumento").value = med.instrumento;
   document.getElementById("nuevaUnidad").value = med.unidad;
+  document.getElementById("archivoTabla").value = "";
 
   document.getElementById("infoArchivoActual").innerHTML =
     "📎 Archivo actual: <strong>" + (med.archivo || "Manual") + "</strong>";
 }
 
+function guardarMedidor(){
+  const nombre = document.getElementById("nuevoNombre").value.trim();
+  const instrumento = document.getElementById("nuevoInstrumento").value.trim();
+  const unidad = document.getElementById("nuevaUnidad").value;
+  const archivo = document.getElementById("archivoTabla").files[0];
+
+  if(!nombre){
+    alert("Ingresá un nombre para el medidor");
+    return;
+  }
+
+  if(!instrumento){
+    alert("Ingresá el número de instrumento");
+    return;
+  }
+
+  const clave = editandoClave || crearClave(nombre);
+  const base = medidores[clave] || {};
+
+  const finalizarGuardado = (tabla, nombreArchivo = null) => {
+    medidores[clave] = {
+      ...base,
+      nombre,
+      instrumento,
+      unidad,
+      tabla: tabla || base.tabla || [],
+      archivo: nombreArchivo || base.archivo || "Manual",
+      fechaModificacion: new Date().toLocaleString("es-AR")
+    };
+
+    if(editandoClave && editandoClave !== clave){
+      delete medidores[editandoClave];
+    }
+
+    guardarEnStorage();
+    actualizarSelector();
+    actualizarLista();
+    cerrarFormulario();
+    medidorEl.value = clave;
+    calcular();
+    alert("Medidor guardado correctamente");
+  };
+
+  if(archivo){
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try{
+        const tabla = parsearCSV(event.target.result);
+        finalizarGuardado(tabla, archivo.name);
+      }catch(error){
+        alert("No se pudo leer el CSV: " + error.message);
+      }
+    };
+    reader.readAsText(archivo);
+    return;
+  }
+
+  if(!base.tabla || !base.tabla.length){
+    alert("Debés cargar un archivo CSV con la tabla para este medidor");
+    return;
+  }
+
+  finalizarGuardado(base.tabla, base.archivo);
+}
+
+function eliminarMedidor(clave){
+  if(!adminAutorizado){
+    const pass = prompt("Ingrese contraseña de administración:");
+    if(pass !== PASSWORD_ADMIN){
+      alert("Contraseña incorrecta");
+      return;
+    }
+    adminAutorizado = true;
+  }
+
+  if(!confirm("¿Seguro que querés eliminar este medidor?")){
+    return;
+  }
+
+  delete medidores[clave];
+  guardarEnStorage();
+  actualizarSelector();
+  actualizarLista();
+  calcular();
+}
+
 function cerrarFormulario(){
   document.getElementById("formularioMedidor").style.display = "none";
 }
+
+// === IMPORTAR / EXPORTAR ===
+
+function exportarBackup(){
+  const payload = {
+    version: 1,
+    exportadoEn: new Date().toISOString(),
+    medidores
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-medidores-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importarBackup(){
+  const input = document.getElementById("archivoBackup");
+  input.value = "";
+  input.click();
+}
+
+document.getElementById("archivoBackup").addEventListener("change", (event) => {
+  const archivo = event.target.files[0];
+  if(!archivo){
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const json = JSON.parse(e.target.result);
+      const origen = json.medidores ? json.medidores : json;
+
+      if(!origen || typeof origen !== "object" || Array.isArray(origen)){
+        throw new Error("Formato inválido");
+      }
+
+      medidores = origen;
+      guardarEnStorage();
+      actualizarSelector();
+      actualizarLista();
+      calcular();
+      alert("Backup importado correctamente");
+    }catch(error){
+      alert("No se pudo importar el archivo: " + error.message);
+    }
+  };
+  reader.readAsText(archivo);
+});
 
 calcular();
 
