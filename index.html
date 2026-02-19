@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Consumo de medidor</title>
+
 <link rel="icon" href="ecotermo.png">
 
 <style>
@@ -92,6 +93,7 @@ button{ cursor:pointer; }
 
 .factor.pos{ color:#22c55e; background:rgba(34,197,94,.12); }
 .factor.neg{ color:#ef4444; background:rgba(239,68,68,.12); }
+.factor.neu{ color:#e5e7eb; }
 
 .overlay{
   position:fixed;
@@ -191,7 +193,7 @@ button{ cursor:pointer; }
 
   <div class="result" id="consumo_dm3">— dm³/h</div>
   <div class="result" id="consumo_m3">— m³/h</div>
-  <div class="factor" id="factor">Factor de corrección: —</div>
+  <div class="factor neu" id="factor">Factor de corrección: —</div>
   <div id="tablaUsada"></div>
 
 </div>
@@ -209,6 +211,9 @@ button{ cursor:pointer; }
   <button onclick="mostrarFormularioNuevo()">➕ Agregar medidor</button>
 
   <div id="formularioMedidor" style="display:none; margin-top:20px;">
+
+    <h4>Agregar / Editar medidor</h4>
+
     <input type="text" id="nuevoNombre" placeholder="Nombre del medidor">
     <input type="text" id="nuevoInstrumento" placeholder="N° de instrumento">
 
@@ -221,6 +226,7 @@ button{ cursor:pointer; }
 
     <button onclick="guardarMedidor()">Guardar</button>
     <button onclick="cerrarFormulario()">Cancelar</button>
+
   </div>
 
   <br>
@@ -230,8 +236,7 @@ button{ cursor:pointer; }
 
 <script>
 
-const PASSWORD_ADMIN = "final";
-let adminAutorizado = false;
+// ================= ESTRUCTURA =================
 
 let medidores = JSON.parse(localStorage.getItem("medidoresData")) || {};
 let editandoClave = null;
@@ -239,6 +244,8 @@ let editandoClave = null;
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+
+// ================= SELECTOR =================
 
 function actualizarSelector(){
   medidorEl.innerHTML = "";
@@ -250,6 +257,8 @@ function actualizarSelector(){
   }
 }
 actualizarSelector();
+
+// ================= CALCULO =================
 
 function calcular(){
 
@@ -307,6 +316,8 @@ function calcular(){
     (medidor.unidad === "dm3" ? " dm³/h" : " m³/h");
 }
 
+// ================= PANEL =================
+
 function abrirPanel(){
   document.getElementById("panelAdmin").classList.add("activo");
   document.getElementById("overlay").classList.add("activo");
@@ -316,8 +327,9 @@ function abrirPanel(){
 function cerrarPanel(){
   document.getElementById("panelAdmin").classList.remove("activo");
   document.getElementById("overlay").classList.remove("activo");
-  adminAutorizado = false;
 }
+
+// ================= LISTA =================
 
 function actualizarLista(){
   const cont = document.getElementById("listaMedidores");
@@ -350,30 +362,20 @@ function toggleMenu(clave){
   menu.style.display = (menu.style.display === "block") ? "none" : "block";
 }
 
-function mostrarFormularioNuevo(){
-  if(!adminAutorizado){
-    alert("Primero debe editar un medidor para autenticarse.");
-    return;
-  }
+// ================= FORMULARIO =================
 
+function mostrarFormularioNuevo(){
   editandoClave = null;
   document.getElementById("formularioMedidor").style.display = "block";
+  document.getElementById("nuevoNombre").value = "";
+  document.getElementById("nuevoInstrumento").value = "";
+}
+
+function cerrarFormulario(){
+  document.getElementById("formularioMedidor").style.display = "none";
 }
 
 function editarMedidor(clave){
-
-  if(!adminAutorizado){
-
-    const pass = prompt("Ingrese contraseña de administración:");
-
-    if(pass !== PASSWORD_ADMIN){
-      alert("Contraseña incorrecta");
-      return;
-    }
-
-    adminAutorizado = true;
-  }
-
   editandoClave = clave;
   const med = medidores[clave];
 
@@ -383,9 +385,7 @@ function editarMedidor(clave){
   document.getElementById("nuevaUnidad").value = med.unidad;
 }
 
-function cerrarFormulario(){
-  document.getElementById("formularioMedidor").style.display = "none";
-}
+// ================= GUARDAR (VERSIÓN INTELIGENTE) =================
 
 function guardarMedidor(){
 
@@ -453,13 +453,7 @@ function finalizarGuardado(nombre,instrumento,unidad,tabla){
 }
 
 function eliminarMedidor(clave){
-  if(!adminAutorizado){
-    alert("Debe autenticarse primero editando un medidor.");
-    return;
-  }
-
   if(!confirm("¿Eliminar medidor?")) return;
-
   delete medidores[clave];
   localStorage.setItem("medidoresData", JSON.stringify(medidores));
   actualizarSelector();
@@ -475,3 +469,4 @@ calcular();
 </script>
 </body>
 </html>
+
