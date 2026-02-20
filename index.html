@@ -122,6 +122,77 @@ select, input, button{
   cursor:pointer;
   margin-left:8px;
 }
+
+/* ============================= */
+/* ======== RESPONSIVE ========= */
+/* ============================= */
+@media (max-width: 768px){
+
+  body{
+    padding:20px 10px;
+  }
+
+  .container{
+    padding:20px;
+    border-radius:18px;
+  }
+
+  h1{
+    font-size:26px;
+  }
+
+  .logoBox img{
+    width:140px;
+  }
+
+  select, input{
+    width:100%;
+  }
+
+  .timeContainer{
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .timeBox{
+    width:100%;
+  }
+
+  .result{
+    font-size:18px;
+  }
+
+}
+
+@media (max-height: 500px){
+
+  body{
+    padding:15px;
+  }
+
+  .container{
+    padding:18px;
+  }
+
+  h1{
+    font-size:22px;
+  }
+
+  .logoBox img{
+    width:120px;
+  }
+
+  .timeContainer{
+    flex-direction:row;
+    gap:15px;
+  }
+
+  .timeBox{
+    flex:1;
+  }
+
+}  
+}
 </style>
 </head>
 
