@@ -259,6 +259,18 @@ select, input, button{
   <hr>
 
   <div id="listaMedidores"></div>
+  <hr>
+
+<h3>Poder calorífico</h3>
+
+<div id="pcMostrado">
+  Poder calorífico del gas: —
+</div>
+
+<div id="pcEditar" style="display:none;">
+  <input type="number" id="inputPC" step="0.01">
+  <button onclick="guardarPC()">Guardar</button>
+</div>
 
   <br>
   <button onclick="cerrarPanel()">Cerrar</button>
@@ -302,6 +314,14 @@ onSnapshot(colRef, (snapshot)=>{
   actualizarSelector();
   actualizarLista();
 });
+  onSnapshot(configRef, (docSnap)=>{
+  if(docSnap.exists()){
+    poderCalorifico = docSnap.data().poderCalorifico;
+    pcMostrado.textContent =
+      "Poder calorífico del gas: " + poderCalorifico;
+    calcular();
+  }
+});
 
 window.abrirPanel = function(){
   panelAdmin.classList.add("activo");
@@ -316,6 +336,7 @@ window.cerrarPanel = function(){
 window.pedirPassword = function(){
   if(prompt("Ingrese contraseña:") === "final"){
     adminAutorizado = true;
+    pcEditar.style.display = "block";
     zonaConfig.style.display = "block";
     actualizarLista();
   }
@@ -408,7 +429,18 @@ window.guardarMedidor = async function(){
 window.eliminarMedidor = async function(clave){
   await deleteDoc(doc(db,"medidores",clave));
 }
+window.guardarPC = async function(){
 
+  const valor = parseFloat(inputPC.value);
+
+  if(isNaN(valor)) return;
+
+  await setDoc(configRef,{
+    poderCalorifico: valor
+  });
+
+  inputPC.value = "";
+}
 /* ===== CÁLCULO ===== */
 
 function calcular(){
@@ -447,6 +479,21 @@ function calcular(){
 
   factorEl.textContent="Factor de corrección: "+masCercano.error.toFixed(2)+" %";
   factorEl.style.color = masCercano.error>=0 ? "#22c55e" : "#ef4444";
+}
+  /* ===== POTENCIA ESTIMADA (SIN CORRECCIÓN) ===== */
+
+if(poderCalorifico && m3_h > 0){
+
+  const energia = m3_h * poderCalorifico;
+
+  energia_kcal.textContent =
+    "Potencia estimada: " + energia.toFixed(2) + " kcal/h";
+
+} else {
+
+  energia_kcal.textContent =
+    "Potencia estimada: — kcal/h";
+
 }
 
 minEl.addEventListener("input",calcular);
