@@ -282,6 +282,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const colRef = collection(db, "medidores");
+  const configRef = doc(db, "configuracion", "general");
+let poderCalorifico = null;
 
 let medidores = {};
 let adminAutorizado = false;
