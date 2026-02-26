@@ -133,15 +133,6 @@ select, input, button{
   .timeBox{ width:100%; }
   .result{ font-size:18px; }
 }
-
-@media (max-height: 500px){
-  body{ padding:15px; }
-  .container{ padding:18px; }
-  h1{ font-size:22px; }
-  .logoBox img{ width:120px; }
-  .timeContainer{ flex-direction:row; gap:15px; }
-  .timeBox{ flex:1; }
-}
 </style>
 </head>
 
@@ -177,6 +168,7 @@ select, input, button{
   <div class="result" id="consumo_m3">— m³/h</div>
   <div id="factor">Factor de corrección: —</div>
 
+  <!-- NUEVO -->
   <div class="result" id="energia_kcal">
     Potencia estimada: — kcal/h
   </div>
@@ -191,7 +183,6 @@ select, input, button{
   <hr>
 
   <div id="zonaConfig" style="display:none;">
-
     <button onclick="mostrarFormulario()">➕ Agregar medidor</button>
 
     <div id="formMedidor" style="display:none;">
@@ -204,26 +195,22 @@ select, input, button{
       <input type="file" id="archivoTabla" accept=".csv">
       <button onclick="guardarMedidor()">Guardar</button>
     </div>
-
   </div>
 
   <hr>
 
+  <!-- NUEVA SECCIÓN -->
   <h3>Poder calorífico</h3>
+  <div id="pcMostrado">Poder calorífico del gas: —</div>
 
-  <div>
-    <div id="pcMostrado">Poder calorífico del gas: —</div>
-
-    <div id="pcEditar" style="display:none;">
-      <input type="number" id="inputPC" step="0.01">
-      <button onclick="guardarPC()">Guardar</button>
-    </div>
+  <div id="pcEditar" style="display:none;">
+    <input type="number" id="inputPC" step="0.01">
+    <button onclick="guardarPC()">Guardar</button>
   </div>
 
   <hr>
 
   <div id="listaMedidores"></div>
-
   <br>
   <button onclick="cerrarPanel()">Cerrar</button>
 
@@ -238,7 +225,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 document.addEventListener("DOMContentLoaded", () => {
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
+  apiKey: "AIzaSyDr1J5UGwJfFNG0A5Ip3verQOXtnqA6i10",
   authDomain: "ecotermo-medidor.firebaseapp.com",
   projectId: "ecotermo-medidor"
 };
@@ -252,10 +239,13 @@ const configRef = doc(db, "configuracion", "general");
 let medidores = {};
 let poderCalorifico = null;
 let adminAutorizado = false;
+let editandoClave = null;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
+const factorEl = document.getElementById("factor");
+const energiaEl = document.getElementById("energia_kcal");
 
 onSnapshot(colRef, (snapshot)=>{
   medidores = {};
@@ -301,26 +291,7 @@ window.cerrarPanel = function(){
   overlay.classList.remove("activo");
 }
 
-function actualizarSelector(){
-  medidorEl.innerHTML="";
-  Object.keys(medidores).forEach(key=>{
-    const opt=document.createElement("option");
-    opt.value=key;
-    opt.textContent=medidores[key].nombre;
-    medidorEl.appendChild(opt);
-  });
-}
-
-function actualizarLista(){
-  listaMedidores.innerHTML="";
-  Object.keys(medidores).forEach(key=>{
-    const med=medidores[key];
-    const div=document.createElement("div");
-    div.className="medItem";
-    div.innerHTML=`<div>${med.nombre}</div>`;
-    listaMedidores.appendChild(div);
-  });
-}
+/* ===== CÁLCULO (ORIGINAL + ENERGÍA AGREGADA) ===== */
 
 function calcular(){
 
@@ -339,12 +310,32 @@ function calcular(){
   consumo_dm3.textContent=dm3_h.toFixed(2)+" dm³/h";
   consumo_m3.textContent=m3_h.toFixed(4)+" m³/h";
 
-  if(poderCalorifico && m3_h>0){
-    const energia=m3_h*poderCalorifico;
-    energia_kcal.textContent=
-      "Potencia estimada: "+energia.toFixed(2)+" kcal/h";
+  const med=medidores[medidorEl.value];
+  if(!med || !med.tabla || med.tabla.length===0){
+    factorEl.textContent="Factor de corrección: —";
+    factorEl.style.color="white";
   } else {
-    energia_kcal.textContent=
+    const valor = med.unidad==="dm3"?dm3_h:m3_h;
+    let masCercano=med.tabla[0];
+    let difMin=Math.abs(valor-masCercano.caudal);
+
+    for(let i=1;i<med.tabla.length;i++){
+      const dif=Math.abs(valor-med.tabla[i].caudal);
+      if(dif<difMin){ difMin=dif; masCercano=med.tabla[i]; }
+    }
+
+    factorEl.textContent="Factor de corrección: "+masCercano.error.toFixed(2)+" %";
+    factorEl.style.color = masCercano.error>=0 ? "#22c55e" : "#ef4444";
+  }
+
+  /* NUEVO: POTENCIA SIN CORRECCIÓN */
+
+  if(poderCalorifico && m3_h>0){
+    const energia = m3_h * poderCalorifico;
+    energiaEl.textContent =
+      "Potencia estimada: " + energia.toFixed(2) + " kcal/h";
+  } else {
+    energiaEl.textContent =
       "Potencia estimada: — kcal/h";
   }
 }
@@ -354,7 +345,6 @@ segEl.addEventListener("input",calcular);
 medidorEl.addEventListener("change",calcular);
 
 });
-
 </script>
 </body>
 </html>
