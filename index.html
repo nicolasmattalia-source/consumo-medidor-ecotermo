@@ -495,21 +495,6 @@ if(poderCalorifico && m3_h > 0){
   factorEl.textContent="Factor de corrección: "+masCercano.error.toFixed(2)+" %";
   factorEl.style.color = masCercano.error>=0 ? "#22c55e" : "#ef4444";
 }
-  /* ===== POTENCIA ESTIMADA (SIN CORRECCIÓN) ===== */
-
-if(poderCalorifico && m3_h > 0){
-
-  const energia = m3_h * poderCalorifico;
-
-  energia_kcal.textContent =
-    "Potencia estimada: " + energia.toFixed(2) + " kcal/h";
-
-} else {
-
-  energia_kcal.textContent =
-    "Potencia estimada: — kcal/h";
-
-}
 
 minEl.addEventListener("input",calcular);
 segEl.addEventListener("input",calcular);
