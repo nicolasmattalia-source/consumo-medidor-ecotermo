@@ -123,75 +123,24 @@ select, input, button{
   margin-left:8px;
 }
 
-/* ============================= */
-/* ======== RESPONSIVE ========= */
-/* ============================= */
 @media (max-width: 768px){
-
-  body{
-    padding:20px 10px;
-  }
-
-  .container{
-    padding:20px;
-    border-radius:18px;
-  }
-
-  h1{
-    font-size:26px;
-  }
-
-  .logoBox img{
-    width:140px;
-  }
-
-  select, input{
-    width:100%;
-  }
-
-  .timeContainer{
-    flex-direction:column;
-    gap:12px;
-  }
-
-  .timeBox{
-    width:100%;
-  }
-
-  .result{
-    font-size:18px;
-  }
-
+  body{ padding:20px 10px; }
+  .container{ padding:20px; border-radius:18px; }
+  h1{ font-size:26px; }
+  .logoBox img{ width:140px; }
+  select, input{ width:100%; }
+  .timeContainer{ flex-direction:column; gap:12px; }
+  .timeBox{ width:100%; }
+  .result{ font-size:18px; }
 }
 
 @media (max-height: 500px){
-
-  body{
-    padding:15px;
-  }
-
-  .container{
-    padding:18px;
-  }
-
-  h1{
-    font-size:22px;
-  }
-
-  .logoBox img{
-    width:120px;
-  }
-
-  .timeContainer{
-    flex-direction:row;
-    gap:15px;
-  }
-
-  .timeBox{
-    flex:1;
-  }
-
-}  
+  body{ padding:15px; }
+  .container{ padding:18px; }
+  h1{ font-size:22px; }
+  .logoBox img{ width:120px; }
+  .timeContainer{ flex-direction:row; gap:15px; }
+  .timeBox{ flex:1; }
 }
 </style>
 </head>
@@ -228,6 +177,10 @@ select, input, button{
   <div class="result" id="consumo_m3">— m³/h</div>
   <div id="factor">Factor de corrección: —</div>
 
+  <div class="result" id="energia_kcal">
+    Potencia estimada: — kcal/h
+  </div>
+
 </div>
 
 <div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
@@ -256,6 +209,19 @@ select, input, button{
 
   <hr>
 
+  <h3>Poder calorífico</h3>
+
+  <div>
+    <div id="pcMostrado">Poder calorífico del gas: —</div>
+
+    <div id="pcEditar" style="display:none;">
+      <input type="number" id="inputPC" step="0.01">
+      <button onclick="guardarPC()">Guardar</button>
+    </div>
+  </div>
+
+  <hr>
+
   <div id="listaMedidores"></div>
 
   <br>
@@ -272,23 +238,24 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 document.addEventListener("DOMContentLoaded", () => {
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDr1J5UGwJfFNG0A5Ip3verQOXtnqA6i10",
+  apiKey: "TU_API_KEY",
   authDomain: "ecotermo-medidor.firebaseapp.com",
   projectId: "ecotermo-medidor"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
 const colRef = collection(db, "medidores");
+const configRef = doc(db, "configuracion", "general");
 
 let medidores = {};
+let poderCalorifico = null;
 let adminAutorizado = false;
-let editandoClave = null;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
-const factorEl = document.getElementById("factor");
 
 onSnapshot(colRef, (snapshot)=>{
   medidores = {};
@@ -299,6 +266,31 @@ onSnapshot(colRef, (snapshot)=>{
   actualizarLista();
 });
 
+onSnapshot(configRef, (docSnap)=>{
+  if(docSnap.exists()){
+    poderCalorifico = docSnap.data().poderCalorifico;
+    pcMostrado.textContent =
+      "Poder calorífico del gas: " + poderCalorifico;
+    calcular();
+  }
+});
+
+window.guardarPC = async function(){
+  const valor = parseFloat(inputPC.value);
+  if(isNaN(valor)) return;
+  await setDoc(configRef,{ poderCalorifico: valor });
+  inputPC.value="";
+}
+
+window.pedirPassword = function(){
+  if(prompt("Ingrese contraseña:") === "final"){
+    adminAutorizado = true;
+    zonaConfig.style.display = "block";
+    pcEditar.style.display = "block";
+    actualizarLista();
+  }
+}
+
 window.abrirPanel = function(){
   panelAdmin.classList.add("activo");
   overlay.classList.add("activo");
@@ -307,14 +299,6 @@ window.abrirPanel = function(){
 window.cerrarPanel = function(){
   panelAdmin.classList.remove("activo");
   overlay.classList.remove("activo");
-}
-
-window.pedirPassword = function(){
-  if(prompt("Ingrese contraseña:") === "final"){
-    adminAutorizado = true;
-    zonaConfig.style.display = "block";
-    actualizarLista();
-  }
 }
 
 function actualizarSelector(){
@@ -333,79 +317,10 @@ function actualizarLista(){
     const med=medidores[key];
     const div=document.createElement("div");
     div.className="medItem";
-    div.innerHTML=`
-      <div>${med.nombre}</div>
-      ${adminAutorizado ? `
-        <div>
-          <span class="iconoAccion" onclick="editarMedidor('${key}')">✏</span>
-          <span class="iconoAccion" onclick="eliminarMedidor('${key}')">🗑</span>
-        </div>
-      ` : ""}
-    `;
+    div.innerHTML=`<div>${med.nombre}</div>`;
     listaMedidores.appendChild(div);
   });
 }
-
-window.mostrarFormulario = function(){
-  editandoClave=null;
-  nuevoNombre.value="";
-  nuevoInstrumento.value="";
-  archivoTabla.value="";
-  formMedidor.style.display="block";
-}
-
-window.editarMedidor = function(clave){
-  editandoClave=clave;
-  const med=medidores[clave];
-  nuevoNombre.value=med.nombre;
-  nuevoInstrumento.value=med.instrumento;
-  nuevaUnidad.value=med.unidad;
-  archivoTabla.value="";
-  formMedidor.style.display="block";
-}
-
-window.guardarMedidor = async function(){
-
-  const nombre=nuevoNombre.value.trim();
-  const instrumento=nuevoInstrumento.value.trim();
-  const unidad=nuevaUnidad.value;
-  const archivo=archivoTabla.files[0];
-
-  if(!nombre) return;
-
-  let tabla = medidores[editandoClave]?.tabla || [];
-
-  if(archivo){
-    const texto = await archivo.text();
-    const lineas = texto.split("\n").slice(1);
-    tabla = [];
-
-    lineas.forEach(linea=>{
-      if(!linea.trim()) return;
-      const partes=linea.includes(";")?linea.split(";"):linea.split(",");
-      const caudal=parseFloat(partes[0].replace(",","."));
-      const error=parseFloat(partes[1].replace(",","."));
-      if(!isNaN(caudal)&&!isNaN(error)){
-        tabla.push({caudal,error});
-      }
-    });
-  }
-
-  const clave = editandoClave || "med_"+Date.now();
-
-  await setDoc(doc(db,"medidores",clave),{
-    nombre,instrumento,unidad,tabla
-  });
-
-  editandoClave=null;
-  formMedidor.style.display="none";
-}
-
-window.eliminarMedidor = async function(clave){
-  await deleteDoc(doc(db,"medidores",clave));
-}
-
-/* ===== CÁLCULO ===== */
 
 function calcular(){
 
@@ -424,25 +339,14 @@ function calcular(){
   consumo_dm3.textContent=dm3_h.toFixed(2)+" dm³/h";
   consumo_m3.textContent=m3_h.toFixed(4)+" m³/h";
 
-  const med=medidores[medidorEl.value];
-  if(!med || !med.tabla || med.tabla.length===0){
-    factorEl.textContent="Factor de corrección: —";
-    factorEl.style.color="white";
-    return;
+  if(poderCalorifico && m3_h>0){
+    const energia=m3_h*poderCalorifico;
+    energia_kcal.textContent=
+      "Potencia estimada: "+energia.toFixed(2)+" kcal/h";
+  } else {
+    energia_kcal.textContent=
+      "Potencia estimada: — kcal/h";
   }
-
-  const valor = med.unidad==="dm3"?dm3_h:m3_h;
-
-  let masCercano=med.tabla[0];
-  let difMin=Math.abs(valor-masCercano.caudal);
-
-  for(let i=1;i<med.tabla.length;i++){
-    const dif=Math.abs(valor-med.tabla[i].caudal);
-    if(dif<difMin){ difMin=dif; masCercano=med.tabla[i]; }
-  }
-
-  factorEl.textContent="Factor de corrección: "+masCercano.error.toFixed(2)+" %";
-  factorEl.style.color = masCercano.error>=0 ? "#22c55e" : "#ef4444";
 }
 
 minEl.addEventListener("input",calcular);
@@ -450,6 +354,7 @@ segEl.addEventListener("input",calcular);
 medidorEl.addEventListener("change",calcular);
 
 });
+
 </script>
 </body>
 </html>
