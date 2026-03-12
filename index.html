@@ -106,6 +106,17 @@ select, input, button{
   padding:20px;
   overflow-y:auto;
 }
+/* ESTILO PARA BOTONES DEL PANEL */
+.panelAdmin button{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:none;
+  border-radius:8px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
 .panelAdmin.activo{ left:0; }
 
 .medItem{
@@ -233,10 +244,14 @@ select, input, button{
 <div id="overlay" class="overlay" onclick="cerrarPanel()"></div>
 
 <div id="panelAdmin" class="panelAdmin">
-
+    <br/>
+    <br/>
+    <br/>
   <button onclick="pedirPassword()">⚙ Configuración</button>
   <hr>
-
+ <button onclick="window.open('http://192.162.2.4','_blank')">
+  📟 Caudalímetro digital
+ </button>
   <div id="zonaConfig" style="display:none;">
 
     <button onclick="mostrarFormulario()">➕ Agregar medidor</button>
@@ -255,7 +270,7 @@ select, input, button{
   </div>
 
   <hr>
-
+    <h3>Medidores</h3>
   <div id="listaMedidores"></div>
   <hr>
 
