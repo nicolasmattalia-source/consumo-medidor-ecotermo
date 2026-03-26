@@ -58,18 +58,22 @@ select{
 
 .menuBtn{
   position:fixed;
-  top:14px;
-  left:14px;
+  top:16px;
+  left:16px;
   background:#1e293b;
-  border:1px solid rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.18);
   color:#fff;
-  font-size:26px;
+  font-size:28px;
+  font-weight:700;
+  line-height:1;
   z-index:2500;
-  width:48px;
-  height:48px;
+  width:52px;
+  height:52px;
   display:flex;
   align-items:center;
   justify-content:center;
+  border-radius:14px;
+  box-shadow:0 12px 30px rgba(0,0,0,.28);
 }
 
 .container{
@@ -182,12 +186,12 @@ select{
 .panelAdmin{
   position:fixed;
   top:0;
-  left:-320px;
-  width:300px;
+  left:-360px;
+  width:340px;
   max-width:100vw;
   height:100%;
   background:#1e293b;
-  padding:18px 18px 22px;
+  padding:18px 18px 24px;
   transition:left .3s ease;
   z-index:2400;
   overflow-y:auto;
@@ -204,7 +208,7 @@ select{
   justify-content:space-between;
   align-items:center;
   gap:12px;
-  margin-bottom:10px;
+  margin-bottom:14px;
 }
 
 .panelHeader h3{
@@ -215,12 +219,17 @@ select{
 }
 
 .panelCloseBtn{
-  background:none;
+  background:#334155;
   color:#fff;
-  font-size:20px;
-  width:auto;
-  min-width:36px;
-  padding:6px 8px;
+  font-size:22px;
+  width:42px !important;
+  min-width:42px;
+  height:42px;
+  padding:0;
+  border:1px solid rgba(255,255,255,.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .menuIntro{
@@ -258,6 +267,8 @@ select{
   border:1px solid rgba(255,255,255,.08);
   text-align:left;
   font-weight:700;
+  padding:12px 14px;
+  border-radius:10px;
 }
 
 .menuNavBtn.activo{
@@ -407,8 +418,8 @@ select{
   }
 
   .menuBtn{
-    top:10px;
-    left:10px;
+    top:12px;
+    left:12px;
   }
 }
 </style>
@@ -431,8 +442,8 @@ select{
 
   <div class="menuSeccion">
     <span class="menuSeccionTitulo">Ensayos</span>
-    <button class="menuNavBtn">Piloto analizador</button>
-    <button class="menuNavBtn">Combustion</button>
+    <button class="menuNavBtn" onclick="irAPilotoAnalizador()">Piloto analizador</button>
+    <button class="menuNavBtn" onclick="irACombustion()">Combustion</button>
     <button class="menuNavBtn activo">Medidor de gas</button>
     <button class="menuNavBtn" onclick="window.open('http://192.168.2.4/', '_blank')">Caudalimetro digital</button>
   </div>
@@ -542,7 +553,25 @@ const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
 const segEl = document.getElementById("segundos");
 const factorEl = document.getElementById("factor");
+const overlayEl = document.getElementById("overlay");
+const panelAdminEl = document.getElementById("panelAdmin");
+const menuBtnEl = document.querySelector(".menuBtn");
+const listaMedidoresEl = document.getElementById("listaMedidores");
+const pcMostradoEl = document.getElementById("pcMostrado");
+const nuevoNombreEl = document.getElementById("nuevoNombre");
+const nuevoInstrumentoEl = document.getElementById("nuevoInstrumento");
+const nuevaUnidadEl = document.getElementById("nuevaUnidad");
+const archivoTablaEl = document.getElementById("archivoTabla");
+const formMedidorEl = document.getElementById("formMedidor");
+const btnAgregarMedidorMenuEl = document.getElementById("btnAgregarMedidorMenu");
+const inputPCEl = document.getElementById("inputPC");
+const totalSegundosEl = document.getElementById("totalSegundos");
+const energiaKcalEl = document.getElementById("energia_kcal");
+const consumoDm3El = document.getElementById("consumo_dm3");
+const consumoM3El = document.getElementById("consumo_m3");
 const CLAVE_ACCIONES = "final";
+const URL_PILOTO_ANALIZADOR = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
+const URL_COMBUSTION = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
 
 function pedirClaveAccion(){
   return prompt("Ingrese contrasena:") === CLAVE_ACCIONES;
@@ -560,20 +589,30 @@ onSnapshot(colRef, (snapshot)=>{
 onSnapshot(configRef, (docSnap)=>{
   if(docSnap.exists()){
     poderCalorifico = docSnap.data().poderCalorifico;
-    pcMostrado.textContent =
+    pcMostradoEl.textContent =
       "Poder calorifico del gas: " + poderCalorifico + " kcal/h";
     calcular();
   }
 });
 
 window.abrirPanel = function(){
-  panelAdmin.classList.add("activo");
-  overlay.classList.add("activo");
+  panelAdminEl.classList.add("activo");
+  overlayEl.classList.add("activo");
+  menuBtnEl.style.display = "none";
 }
 
 window.cerrarPanel = function(){
-  panelAdmin.classList.remove("activo");
-  overlay.classList.remove("activo");
+  panelAdminEl.classList.remove("activo");
+  overlayEl.classList.remove("activo");
+  menuBtnEl.style.display = "flex";
+}
+
+window.irAPilotoAnalizador = function(){
+  window.open(URL_PILOTO_ANALIZADOR, "_blank", "noopener");
+}
+
+window.irACombustion = function(){
+  window.open(URL_COMBUSTION, "_blank", "noopener");
 }
 
 function actualizarSelector(){
@@ -587,7 +626,7 @@ function actualizarSelector(){
 }
 
 function actualizarLista(){
-  listaMedidores.innerHTML="";
+  listaMedidoresEl.innerHTML="";
   Object.keys(medidores).forEach(key=>{
     const med=medidores[key];
     const div=document.createElement("div");
@@ -605,38 +644,38 @@ function actualizarLista(){
         </div>
       </div>
     `;
-    listaMedidores.appendChild(div);
+    listaMedidoresEl.appendChild(div);
   });
 }
 
 window.mostrarFormulario = function(){
   if(!pedirClaveAccion()) return;
   editandoClave=null;
-  nuevoNombre.value="";
-  nuevoInstrumento.value="";
-  archivoTabla.value="";
-  formMedidor.style.display="grid";
-  btnAgregarMedidorMenu.textContent="Agregar medidor";
+  nuevoNombreEl.value="";
+  nuevoInstrumentoEl.value="";
+  archivoTablaEl.value="";
+  formMedidorEl.style.display="grid";
+  btnAgregarMedidorMenuEl.textContent="Agregar medidor";
 }
 
 window.editarMedidor = function(clave){
   if(!pedirClaveAccion()) return;
   editandoClave=clave;
   const med=medidores[clave];
-  nuevoNombre.value=med.nombre;
-  nuevoInstrumento.value=med.instrumento;
-  nuevaUnidad.value=med.unidad;
-  archivoTabla.value="";
-  formMedidor.style.display="grid";
-  btnAgregarMedidorMenu.textContent="Agregar medidor";
+  nuevoNombreEl.value=med.nombre;
+  nuevoInstrumentoEl.value=med.instrumento;
+  nuevaUnidadEl.value=med.unidad;
+  archivoTablaEl.value="";
+  formMedidorEl.style.display="grid";
+  btnAgregarMedidorMenuEl.textContent="Guardar cambios";
 }
 
 window.guardarMedidor = async function(){
   if(!pedirClaveAccion()) return;
-  const nombre=nuevoNombre.value.trim();
-  const instrumento=nuevoInstrumento.value.trim();
-  const unidad=nuevaUnidad.value;
-  const archivo=archivoTabla.files[0];
+  const nombre=nuevoNombreEl.value.trim();
+  const instrumento=nuevoInstrumentoEl.value.trim();
+  const unidad=nuevaUnidadEl.value;
+  const archivo=archivoTablaEl.files[0];
 
   if(!nombre) return;
 
@@ -665,7 +704,11 @@ window.guardarMedidor = async function(){
   });
 
   editandoClave=null;
-  btnAgregarMedidorMenu.textContent="Agregar medidor";
+  nuevoNombreEl.value="";
+  nuevoInstrumentoEl.value="";
+  nuevaUnidadEl.value="dm3";
+  archivoTablaEl.value="";
+  btnAgregarMedidorMenuEl.textContent="Agregar medidor";
 }
 
 window.eliminarMedidor = async function(clave){
@@ -674,7 +717,7 @@ window.eliminarMedidor = async function(clave){
 }
 
 window.guardarPC = async function(){
-  const valor = parseFloat(inputPC.value);
+  const valor = parseFloat(inputPCEl.value);
 
   if(isNaN(valor)) return;
 
@@ -682,7 +725,7 @@ window.guardarPC = async function(){
     poderCalorifico: valor
   });
 
-  inputPC.value = "";
+  inputPCEl.value = "";
 }
 
 function calcular(){
@@ -695,24 +738,31 @@ function calcular(){
   }
 
   const total=(min*60)+seg;
-  totalSegundos.textContent="Total: "+total+" segundos";
+  totalSegundosEl.textContent="Total: "+total+" segundos";
 
-  if(total<=0) return;
+  if(total<=0){
+    consumoDm3El.textContent = "\u2014 dm\u00b3/h";
+    consumoM3El.textContent = "\u2014 m\u00b3/h";
+    energiaKcalEl.textContent = "Potencia estimada: \u2014 kcal/h";
+    factorEl.textContent = "Factor de correccion: \u2014";
+    factorEl.style.color = "#ffffff";
+    return;
+  }
 
   const dm3_h=(3600*100)/total;
   const m3_h=dm3_h/1000;
 
   if(poderCalorifico && m3_h > 0){
     const energia = m3_h * poderCalorifico;
-    energia_kcal.textContent =
+    energiaKcalEl.textContent =
       "Potencia estimada: " + energia.toFixed(2) + " kcal/h";
   } else {
-    energia_kcal.textContent =
+    energiaKcalEl.textContent =
       "Potencia estimada: - kcal/h";
   }
 
-  consumo_dm3.textContent=dm3_h.toFixed(2)+" dm3/h";
-  consumo_m3.textContent=m3_h.toFixed(4)+" m3/h";
+  consumoDm3El.textContent=dm3_h.toFixed(2)+" dm3/h";
+  consumoM3El.textContent=m3_h.toFixed(4)+" m3/h";
 
   const med=medidores[medidorEl.value];
   if(!med || !med.tabla || med.tabla.length===0){
