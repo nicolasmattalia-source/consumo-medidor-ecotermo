@@ -365,6 +365,32 @@ select{
   background:#ef2b2d;
 }
 
+.editorStatus{
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:8px;
+  background:rgba(34,197,94,.12);
+  color:#dcfce7;
+  font-size:13px;
+  font-weight:700;
+}
+
+.editorStatus.activo{
+  display:flex;
+}
+
+.editorStatus button{
+  width:auto;
+  padding:6px 10px;
+  font-size:12px;
+  background:#334155;
+}
+
 #pcMostrado{
   color:#e2e8f0;
   font-size:14px;
@@ -440,6 +466,11 @@ select{
     <button class="panelCloseBtn" onclick="cerrarPanel()" aria-label="Cerrar menu">&times;</button>
   </div>
 
+  <div id="editorStatus" class="editorStatus">
+    <span>Modo editor activo</span>
+    <button onclick="salirModoEditor()">Salir</button>
+  </div>
+
   <div class="menuSeccion">
     <span class="menuSeccionTitulo">Ensayos</span>
     <button class="menuNavBtn" onclick="irAPilotoAnalizador()">Piloto analizador</button>
@@ -455,8 +486,8 @@ select{
       <input type="text" id="nuevoNombre" placeholder="Nro de medidor">
       <input type="text" id="nuevoInstrumento" placeholder="Instrumento">
       <select id="nuevaUnidad">
-        <option value="dm3">dm&sup3;/h</option>
         <option value="m3">m&sup3;/h</option>
+        <option value="dm3">dm&sup3;/h</option>
       </select>
       <div class="fileInputWrap">
         <input type="file" id="archivoTabla" accept=".csv">
@@ -473,6 +504,7 @@ select{
   <div class="menuSeccion">
     <span class="menuSeccionTitulo">Poder calorifico</span>
     <div id="pcMostrado">Poder calorifico del gas: &mdash;</div>
+    <button class="listActionBtn editBtn" onclick="editarPC()">Editar</button>
 
     <div id="pcEditar" style="display:none;">
       <input type="number" id="inputPC" step="0.01">
@@ -548,6 +580,7 @@ let poderCalorifico = null;
 
 let medidores = {};
 let editandoClave = null;
+let modoEditorActivo = false;
 
 const medidorEl = document.getElementById("medidor");
 const minEl = document.getElementById("minutos");
@@ -555,6 +588,7 @@ const segEl = document.getElementById("segundos");
 const factorEl = document.getElementById("factor");
 const overlayEl = document.getElementById("overlay");
 const panelAdminEl = document.getElementById("panelAdmin");
+const editorStatusEl = document.getElementById("editorStatus");
 const menuBtnEl = document.querySelector(".menuBtn");
 const listaMedidoresEl = document.getElementById("listaMedidores");
 const pcMostradoEl = document.getElementById("pcMostrado");
@@ -565,6 +599,7 @@ const archivoTablaEl = document.getElementById("archivoTabla");
 const formMedidorEl = document.getElementById("formMedidor");
 const btnAgregarMedidorMenuEl = document.getElementById("btnAgregarMedidorMenu");
 const inputPCEl = document.getElementById("inputPC");
+const pcEditarEl = document.getElementById("pcEditar");
 const totalSegundosEl = document.getElementById("totalSegundos");
 const energiaKcalEl = document.getElementById("energia_kcal");
 const consumoDm3El = document.getElementById("consumo_dm3");
@@ -573,8 +608,31 @@ const CLAVE_ACCIONES = "final";
 const URL_PILOTO_ANALIZADOR = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
 const URL_COMBUSTION = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
 
-function pedirClaveAccion(){
-  return prompt("Ingrese contrasena:") === CLAVE_ACCIONES;
+function actualizarModoEditor(){
+  editorStatusEl.classList.toggle("activo", modoEditorActivo);
+}
+
+function entrarModoEditor(){
+  if(modoEditorActivo) return true;
+
+  if(prompt("Ingrese contrasena:") !== CLAVE_ACCIONES) return false;
+
+  modoEditorActivo = true;
+  actualizarModoEditor();
+  return true;
+}
+
+window.salirModoEditor = function(){
+  modoEditorActivo = false;
+  editandoClave = null;
+  pcEditarEl.style.display = "none";
+  inputPCEl.value = "";
+  nuevoNombreEl.value = "";
+  nuevoInstrumentoEl.value = "";
+  nuevaUnidadEl.value = "m3";
+  archivoTablaEl.value = "";
+  btnAgregarMedidorMenuEl.textContent = "Agregar medidor";
+  actualizarModoEditor();
 }
 
 onSnapshot(colRef, (snapshot)=>{
@@ -649,7 +707,7 @@ function actualizarLista(){
 }
 
 window.mostrarFormulario = function(){
-  if(!pedirClaveAccion()) return;
+  if(!entrarModoEditor()) return;
   editandoClave=null;
   nuevoNombreEl.value="";
   nuevoInstrumentoEl.value="";
@@ -659,7 +717,7 @@ window.mostrarFormulario = function(){
 }
 
 window.editarMedidor = function(clave){
-  if(!pedirClaveAccion()) return;
+  if(!entrarModoEditor()) return;
   editandoClave=clave;
   const med=medidores[clave];
   nuevoNombreEl.value=med.nombre;
@@ -671,7 +729,7 @@ window.editarMedidor = function(clave){
 }
 
 window.guardarMedidor = async function(){
-  if(!pedirClaveAccion()) return;
+  if(!entrarModoEditor()) return;
   const nombre=nuevoNombreEl.value.trim();
   const instrumento=nuevoInstrumentoEl.value.trim();
   const unidad=nuevaUnidadEl.value;
@@ -706,18 +764,26 @@ window.guardarMedidor = async function(){
   editandoClave=null;
   nuevoNombreEl.value="";
   nuevoInstrumentoEl.value="";
-  nuevaUnidadEl.value="dm3";
+  nuevaUnidadEl.value="m3";
   archivoTablaEl.value="";
   btnAgregarMedidorMenuEl.textContent="Agregar medidor";
 }
 
 window.eliminarMedidor = async function(clave){
-  if(!pedirClaveAccion()) return;
+  if(!entrarModoEditor()) return;
   await deleteDoc(doc(db,"medidores",clave));
 }
 
+window.editarPC = function(){
+  if(!entrarModoEditor()) return;
+  inputPCEl.value = poderCalorifico ?? "";
+  pcEditarEl.style.display = "block";
+  inputPCEl.focus();
+}
+
 window.guardarPC = async function(){
-  const valor = parseFloat(inputPCEl.value);
+  if(!entrarModoEditor()) return;
+  const valor = parseFloat(inputPCEl.value.replace(",","."));
 
   if(isNaN(valor)) return;
 
@@ -726,7 +792,14 @@ window.guardarPC = async function(){
   });
 
   inputPCEl.value = "";
+  pcEditarEl.style.display = "none";
 }
+
+archivoTablaEl.addEventListener("change", ()=>{
+  if(archivoTablaEl.files.length > 0 && !entrarModoEditor()){
+    archivoTablaEl.value = "";
+  }
+});
 
 function calcular(){
   let min=Number(minEl.value)||0;
@@ -771,7 +844,9 @@ function calcular(){
     return;
   }
 
-  const valor = med.unidad==="dm3" ? dm3_h : m3_h;
+  const caudalMaximoTabla = Math.max(...med.tabla.map(fila => Number(fila.caudal) || 0));
+  const tablaPareceM3 = caudalMaximoTabla > 0 && caudalMaximoTabla <= 50;
+  const valor = med.unidad==="dm3" && !tablaPareceM3 ? dm3_h : m3_h;
 
   let masCercano=med.tabla[0];
   let difMin=Math.abs(valor-masCercano.caudal);
