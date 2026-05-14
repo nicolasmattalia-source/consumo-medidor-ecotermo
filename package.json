@@ -1,0 +1,13 @@
+{
+  "name": "medidor-de-gas",
+  "version": "1.0.0",
+  "description": "App web para el calculo de consumo de medidor de gas usando Firebase.",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server --open=index.html"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
