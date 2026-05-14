@@ -13,6 +13,7 @@ correccion y la potencia estimada en kcal/h.
 - Calculo de potencia estimada usando el poder calorifico configurado.
 - Busqueda del factor de correccion mas cercano segun la tabla del medidor.
 - Panel lateral de configuracion.
+- Inicio de sesion con Google para habilitar la edicion.
 - Alta, edicion y eliminacion de medidores.
 - Carga de tablas de correccion desde archivos CSV.
 - Guardado de medidores y configuracion general en Firebase Firestore.
@@ -24,6 +25,7 @@ correccion y la potencia estimada en kcal/h.
 - HTML
 - CSS
 - JavaScript
+- Firebase Authentication
 - Firebase Firestore
 - GitHub Pages
 
@@ -38,18 +40,14 @@ correccion y la potencia estimada en kcal/h.
 1. Abrir la aplicacion en el navegador.
 2. Seleccionar el medidor a utilizar.
 3. Ingresar los minutos y segundos medidos para el consumo de 100 dm3.
-4. Revisar los resultados calculados:
-   - Consumo dm3/h
-   - Consumo m3/h
-   - Factor de correccion
-   - Potencia estimada
+4. Revisar los resultados calculados.
+5. Abrir el menu lateral para iniciar sesion con Google si se necesita editar.
 
 ## Panel de configuracion
 
 El boton de menu abre el panel lateral de configuracion. Desde ahi se pueden
-administrar los medidores guardados y editar el poder calorifico del gas.
-
-Las acciones de edicion solicitan una contrasena antes de modificar datos.
+administrar los medidores guardados, editar el poder calorifico del gas e
+iniciar o cerrar sesion con Google.
 
 ## Formato del archivo CSV
 
@@ -88,18 +86,15 @@ Iniciar el servidor local:
 npm start
 ```
 
-El navegador abrira `index.html` automaticamente.
-
 ## Despliegue
 
 El proyecto esta pensado para publicarse como sitio estatico en GitHub Pages.
-Al estar toda la app contenida en `index.html`, solo es necesario subir los
-archivos del proyecto al repositorio y habilitar GitHub Pages desde la rama
-principal.
+Al estar toda la app contenida en `index.html`, solo hace falta subir los
+archivos del proyecto al repositorio y publicar la rama principal.
 
 ## Base de datos
 
-La aplicacion usa Firebase Firestore para guardar:
+La aplicacion usa Firebase para guardar:
 
 - `medidores`: datos de cada medidor, instrumento, unidad y tabla de correccion.
 - `configuracion/general`: poder calorifico usado para estimar la potencia.
