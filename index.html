@@ -567,7 +567,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChang
 
 document.addEventListener("DOMContentLoaded", () => {
 
-// --- Autenticacion Firebase ---
+// --- Autenticación Firebase ---
 const loginBtn = document.createElement("button");
 loginBtn.id = "loginBtn";
 loginBtn.style.margin = "0 0 12px";
@@ -577,14 +577,14 @@ const provider = new GoogleAuthProvider();
 
 function actualizarBoton(user) {
   if (user) {
-    loginBtn.textContent = "Cerrar sesion (" + (user.displayName || user.email) + ")";
+    loginBtn.textContent = "Cerrar sesión (" + (user.displayName || user.email) + ")";
     loginBtn.onclick = () => signOut(auth).catch((error) => {
       console.error("No se pudo cerrar sesion", error);
     });
     modoEditorActivo = true;
     actualizarModoEditor();
   } else {
-    loginBtn.textContent = "Iniciar sesion con Google";
+    loginBtn.textContent = "Iniciar sesión con Google";
     loginBtn.onclick = () => signInWithPopup(auth, provider).catch((error) => {
       console.error("No se pudo iniciar sesion", error);
       const detalle = error?.code
@@ -598,7 +598,7 @@ function actualizarBoton(user) {
 }
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBQSCISK8m_UMLfT0qfETHMNRHm6aJVvyw",
+  apiKey: "AIzaSyDr1J5UGwJffNG0A5Ip3verQOXtnqA6i10",
   authDomain: "ecotermo-medidor.firebaseapp.com",
   projectId: "ecotermo-medidor",
   storageBucket: "ecotermo-medidor.firebasestorage.app",
