@@ -560,11 +560,39 @@ select{
 
 <script type="module">
 
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+
+// --- Autenticacion Firebase ---
+const loginBtn = document.createElement("button");
+loginBtn.id = "loginBtn";
+loginBtn.style.margin = "0 0 12px";
+
+let auth;
+const provider = new GoogleAuthProvider();
+
+function actualizarBoton(user) {
+  if (user) {
+    loginBtn.textContent = "Cerrar sesion (" + (user.displayName || user.email) + ")";
+    loginBtn.onclick = () => signOut(auth).catch((error) => {
+      console.error("No se pudo cerrar sesion", error);
+    });
+    modoEditorActivo = true;
+    actualizarModoEditor();
+  } else {
+    loginBtn.textContent = "Iniciar sesion con Google";
+    loginBtn.onclick = () => signInWithPopup(auth, provider).catch((error) => {
+      console.error("No se pudo iniciar sesion", error);
+      alert("No se pudo iniciar sesion con Google. Revisa la consola para ver el detalle.");
+    });
+    modoEditorActivo = false;
+    actualizarModoEditor();
+  }
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDr1J5UGwJfFNG0A5Ip3verQOXtnqA6i10",
@@ -573,6 +601,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+auth = getAuth(app);
 const db = getFirestore(app);
 const colRef = collection(db, "medidores");
 const configRef = doc(db, "configuracion", "general");
@@ -608,18 +637,19 @@ const CLAVE_ACCIONES = "final";
 const URL_PILOTO_ANALIZADOR = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
 const URL_COMBUSTION = "https://nicolasmattalia-source.github.io/Medidor-de-Monoxido-de-carbono-Ecotermo/";
 
+editorStatusEl.insertAdjacentElement("beforebegin", loginBtn);
+
 function actualizarModoEditor(){
   editorStatusEl.classList.toggle("activo", modoEditorActivo);
 }
 
+onAuthStateChanged(auth, (user) => {
+  actualizarBoton(user);
+});
+
+
 function entrarModoEditor(){
-  if(modoEditorActivo) return true;
-
-  if(prompt("Ingrese contrasena:") !== CLAVE_ACCIONES) return false;
-
-  modoEditorActivo = true;
-  actualizarModoEditor();
-  return true;
+  return modoEditorActivo;
 }
 
 window.salirModoEditor = function(){
@@ -633,6 +663,9 @@ window.salirModoEditor = function(){
   archivoTablaEl.value = "";
   btnAgregarMedidorMenuEl.textContent = "Agregar medidor";
   actualizarModoEditor();
+  signOut(auth).catch((error) => {
+    console.error("No se pudo cerrar sesion", error);
+  });
 }
 
 onSnapshot(colRef, (snapshot)=>{
