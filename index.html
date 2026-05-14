@@ -587,7 +587,10 @@ function actualizarBoton(user) {
     loginBtn.textContent = "Iniciar sesion con Google";
     loginBtn.onclick = () => signInWithPopup(auth, provider).catch((error) => {
       console.error("No se pudo iniciar sesion", error);
-      alert("No se pudo iniciar sesion con Google. Revisa la consola para ver el detalle.");
+      const detalle = error?.code
+        ? error.code + "\n" + (error.message || "")
+        : "Revisa la consola para ver el detalle.";
+      alert("No se pudo iniciar sesion con Google.\n\n" + detalle);
     });
     modoEditorActivo = false;
     actualizarModoEditor();
